@@ -8,12 +8,14 @@
 		y: 0
 	};
 
+	var mouseDown = false;
+
 	const nodes = [];
 	const lines = [];
 	var intersections = [];
 	const radius = 5;
-	const cWidth = 1000;
-	const cHeight = 1000;
+	const cWidth = canvas.width;
+	const cHeight = canvas.height;
 
 	function intersect(l1, l2)
 	{
@@ -43,7 +45,9 @@
 	function edges(p1, p2)
 	{
 		var a = (p1.y - p2.y) / (p1.x - p2.x);
-		if (a === Infinity) {
+		if (isNaN(a)) {
+			return null
+		} else if (!Number.isFinite(a)) {
 			console.log('slope is infinite');
 			return {
 				start: {x: p1.x, y: 0},
@@ -65,17 +69,25 @@
 		user.y = e.clientY - rect.top;
 	});
 
-	canvas.addEventListener("click", function (e) {
+	canvas.addEventListener("mousedown", function (e) {
 		nodes.push({x: user.x, y: user.y});
+		mouseDown = true;
+	});
+
+	canvas.addEventListener("mouseup", function (e) {
+		nodes.push({x: user.x, y: user.y});
+		mouseDown = false;
 	});
 
 	function update() {
-		while (nodes.length > 1) {
+		if (nodes.length > 1) {
 			let p1 = nodes.pop();
 			let p2 = nodes.pop();
 
 			let line = edges(p1, p2);
-			lines.push(line);
+			if (line !== null) {
+				lines.push(line);
+			}
 		}
 		if (lines.length >= 2) {
 			intersections = []
@@ -90,6 +102,17 @@
 	function render() {
 		update();
 		ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+		if (nodes.length === 1 && mouseDown) {
+			let line = edges(nodes[0], user);
+
+			if (line !== null) {
+				ctx.beginPath();
+				ctx.moveTo(line.start.x, line.start.y);
+				ctx.lineTo(line.end.x, line.end.y);
+				ctx.stroke();
+			}
+		}
 
 		for (let node of nodes) {
 			ctx.beginPath();
