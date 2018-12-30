@@ -23,8 +23,16 @@
 		var a1 = (p1.y - p2.y) / (p1.x - p2.x);
 		var a2 = (p3.y - p4.y) / (p3.x - p4.x);
 
-		var b1 = a1*p1.x - p1.y;
-		var b2 = a2*p3.x - p3.y;
+		var b1 = p1.y - a1*p1.x;
+		var b2 = p3.y - a2*p3.x;
+
+		if (!Number.isFinite(a1) && Number.isFinite(a2)) {
+			return {x: p1.x, y: p1.x*a2+b2};
+		} else if (Number.isFinite(a1) && !Number.isFinite(a2)) {
+			return {x: p3.x, y: p3.x*a1+b1}
+		} else if (!Number.isFinite(a1) && !Number.isFinite(a2)) {
+			return {x: NaN, y: NaN}
+		}
 
 		var x = (b2 - b1)/(a1 - a2);
 		var y = a2*x + b2;
@@ -36,6 +44,7 @@
 	{
 		var a = (p1.y - p2.y) / (p1.x - p2.x);
 		if (a === Infinity) {
+			console.log('slope is infinite');
 			return {
 				start: {x: p1.x, y: 0},
 				end: {x: p1.x, y: cHeight}
