@@ -136,6 +136,24 @@
 		}
 	};
 
+	function pointInRange() {
+		let minDist = Infinity;
+		let minIntersection = null;
+		for (let intersection of intersections) {
+			let distance = Math.hypot(user.x - intersection.x, user.y - intersection.y);
+			if (distance < minDist) {
+				minDist = distance;
+				minIntersection = intersection;
+			}
+		}
+
+		if (minIntersection !== null && minDist <= radius) {
+			return minIntersection;
+		} else {
+			return null;
+		}
+	}
+
 	canvas.addEventListener("mousemove", function (e) {
 		var rect = canvas.getBoundingClientRect();
 		user.x = e.clientX - rect.left;
@@ -143,7 +161,14 @@
 	});
 
 	canvas.addEventListener("mousedown", function (e) {
-		nodes.push({x: user.x, y: user.y});
+		let minIntersection = pointInRange();
+
+		if (minIntersection) {
+			nodes.push(minIntersection);
+		} else {
+			nodes.push({x: user.x, y: user.y});
+		}
+
 		user.mouseDown = true;
 	});
 
@@ -157,25 +182,17 @@
 			let p1 = nodes.pop();
 			let p2 = nodes.pop();
 
-			let minDist = 1 << 30;
-			let minIntersection = null;
-			for (let intersection of intersections) {
-				let distance = Math.hypot(user.x - intersection.x, user.y - intersection.y);
-				if (distance < minDist) {
-					minDist = distance;
-					minIntersection = intersection;
-				}
-			}
+			let minIntersection = pointInRange();
 
 			if (user.drawType === 'line') {
 				let line = edges(p1, p2);
-				if (minIntersection !== null && minDist <= radius) {
+				if (minIntersection) {
 					line = edges(p2, minIntersection);
 				}
 				lines.push(line);
 			} else if (user.drawType === 'circle') {
 				let nodeRadius = Math.hypot(p1.x - p2.x, p1.y - p2.y);
-				if (minIntersection !== null && minDist <= radius) {
+				if (minIntersection) {
 					nodeRadius = Math.hypot(p2.x - minIntersection.x, p2.y - minIntersection.y);
 				}
 
@@ -205,25 +222,11 @@
 	}
 
 	function newShape() {
-		let minDist = 1 << 30;
-		let minIntersection = null;
-		for (let intersection of intersections) {
-			let distance = Math.hypot(user.x - intersection.x, user.y - intersection.y);
-			if (distance < minDist) {
-				minDist = distance;
-				minIntersection = intersection;
-			}
-		}
-
-		if (minIntersection !== null && minDist <= radius) {
-			ctx.beginPath();
-			ctx.arc(minIntersection.x, minIntersection.y, radius, 0, 2*Math.PI);
-			ctx.fill();
-		}
+		let minIntersection = pointInRange();
 
 		if (user.drawType === 'line') {
 			let line = edges(nodes[0], {x: user.x, y: user.y});
-			if (minIntersection !== null && minDist <= radius) {
+			if (minIntersection) {
 				line = edges(nodes[0], minIntersection);
 			}
 
@@ -236,7 +239,7 @@
 		} else if (user.drawType === 'circle') {
 			let node = nodes[0]
 			let nodeRadius = Math.hypot(node.x - user.x, node.y - user.y);
-			if (minIntersection !== null && minDist <= radius) {
+			if (minIntersection) {
 				nodeRadius = Math.hypot(node.x - minIntersection.x, node.y - minIntersection.y);
 			}
 
@@ -252,6 +255,14 @@
 
 		if (nodes.length === 1 && user.mouseDown) {
 			newShape();
+		}
+
+		let minIntersection = pointInRange();
+
+		if (minIntersection) {
+			ctx.beginPath();
+			ctx.arc(minIntersection.x, minIntersection.y, radius, 0, 2*Math.PI);
+			ctx.fill();
 		}
 
 		for (let line of lines) {
