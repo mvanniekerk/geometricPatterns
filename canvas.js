@@ -57,6 +57,37 @@
 		return {x, y};
 	}
 
+	function circleIntersect(circle, line) 
+	{
+		let x1 = line.start.x - circle.centre.x;
+		let x2 = line.end.x - circle.centre.x;
+		let y1 = line.start.y - circle.centre.y;
+		let y2 = line.end.y - circle.centre.y;
+		let r = circle.radius;
+
+		let dx = x2 - x1;
+		let dy = y2 - y1;
+		let dr = Math.hypot(dx, dy);
+		let D = x1*y2 - x2*y1
+
+		let sgn = (x) => x < 0 ? -1 : 1;
+		let discr = r*r*dr*dr-D*D;
+
+		if (discr < 0) {
+			return [];
+		} else if (discr == 0) {
+			console.log('tangent line');
+		}
+
+		let xi1 = (D*dy + sgn(dy)*dx*Math.sqrt(discr)) / (dr*dr) + circle.centre.x;
+		let yi1 = (-D*dx + Math.abs(dy)*Math.sqrt(discr)) / (dr*dr) + circle.centre.y;
+		
+		let xi2 = (D*dy - sgn(dy)*dx*Math.sqrt(discr)) / (dr*dr) + circle.centre.x;
+		let yi2 = (-D*dx - Math.abs(dy)*Math.sqrt(discr)) / (dr*dr) + circle.centre.y;
+
+		return [{x: xi1, y: yi1}, {x: xi2, y: yi2}]
+	}
+
 	function edges(p1, p2)
 	{
 		var a = (p1.y - p2.y) / (p1.x - p2.x);
@@ -110,12 +141,18 @@
 				circles.push({centre: p2, radius: radius});
 			}
 		}
-		if (lines.length >= 2) {
-			intersections = []
-			for (let l1 = 0; l1 < lines.length; l1++) {
-				for (let l2 = 0; l2 < l1; l2++) {
-					intersections.push(intersect(lines[l1], lines[l2]));
-				}
+
+		intersections = []
+
+		for (let l1 = 0; l1 < lines.length; l1++) {
+			for (let l2 = 0; l2 < l1; l2++) {
+				intersections.push(intersect(lines[l1], lines[l2]));
+			}
+		}
+
+		for (let circle of circles) {
+			for (let line of lines) {
+				intersections.push(...circleIntersect(circle, line)); 
 			}
 		}
 	}
