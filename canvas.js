@@ -1,17 +1,32 @@
 (function main() {
 	"use strict"
 	const canvas = document.getElementById('canvas');
-	const ctx = canvas.getContext('2d')
+	const drawTypeSelectors = document.forms["drawType"].elements["drawType"];
+	const ctx = canvas.getContext('2d');
 
 	const user = {
 		x: 0,
-		y: 0
+		y: 0,
+		mouseDown: false,
+		drawType: 'line'
 	};
 
-	var mouseDown = false;
+
+	for (let radio of drawTypeSelectors) {
+		radio.onclick = function (e) {
+			user.drawType = radio.value;
+			console.log(radio.value);
+		};
+
+		if (radio.checked) {
+			user.drawType = radio.value;
+			console.log(user.drawType);
+		}
+	};
 
 	const nodes = [];
 	const lines = [];
+	const circles = [];
 	var intersections = [];
 	const radius = 5;
 	const cWidth = canvas.width;
@@ -46,9 +61,11 @@
 	{
 		var a = (p1.y - p2.y) / (p1.x - p2.x);
 		if (isNaN(a)) {
-			return null
+			return {
+				start: {x: 0, y: p1.y},
+				end: {x: cWidth, y: p1.y}
+			}
 		} else if (!Number.isFinite(a)) {
-			console.log('slope is infinite');
 			return {
 				start: {x: p1.x, y: 0},
 				end: {x: p1.x, y: cHeight}
@@ -71,12 +88,12 @@
 
 	canvas.addEventListener("mousedown", function (e) {
 		nodes.push({x: user.x, y: user.y});
-		mouseDown = true;
+		user.mouseDown = true;
 	});
 
 	canvas.addEventListener("mouseup", function (e) {
 		nodes.push({x: user.x, y: user.y});
-		mouseDown = false;
+		user.mouseDown = false;
 	});
 
 	function update() {
@@ -84,9 +101,13 @@
 			let p1 = nodes.pop();
 			let p2 = nodes.pop();
 
-			let line = edges(p1, p2);
-			if (line !== null) {
+			if (user.drawType === 'line') {
+				let line = edges(p1, p2);
 				lines.push(line);
+			} else if (user.drawType === 'circle') {
+				let radius = Math.hypot(Math.abs(p1.x - p2.x), Math.abs(p1.y - p2.y));
+
+				circles.push({centre: p2, radius: radius});
 			}
 		}
 		if (lines.length >= 2) {
@@ -103,26 +124,35 @@
 		update();
 		ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-		if (nodes.length === 1 && mouseDown) {
-			let line = edges(nodes[0], user);
+		if (nodes.length === 1 && user.mouseDown) {
+			if (user.drawType === 'line') {
+				let line = edges(nodes[0], {x: user.x, y: user.y});
 
-			if (line !== null) {
+				if (line !== null) {
+					ctx.beginPath();
+					ctx.moveTo(line.start.x, line.start.y);
+					ctx.lineTo(line.end.x, line.end.y);
+					ctx.stroke();
+				}
+			} else if (user.drawType === 'circle') {
+				let node = nodes[0]
+				let radius = Math.hypot(Math.abs(node.x - user.x), Math.abs(node.y - user.y));
+
 				ctx.beginPath();
-				ctx.moveTo(line.start.x, line.start.y);
-				ctx.lineTo(line.end.x, line.end.y);
+				ctx.arc(node.x, node.y, radius, 0, 2*Math.PI);
 				ctx.stroke();
 			}
 		}
 
-		for (let node of nodes) {
-			ctx.beginPath();
-			ctx.arc(node.x, node.y, radius, 0, 2*Math.PI);
-			ctx.fill();
-		}
 		for (let line of lines) {
 			ctx.beginPath();
 			ctx.moveTo(line.start.x, line.start.y);
 			ctx.lineTo(line.end.x, line.end.y);
+			ctx.stroke();
+		}
+		for (let circle of circles) {
+			ctx.beginPath();
+			ctx.arc(circle.centre.x, circle.centre.y, circle.radius, 0, 2*Math.PI);
 			ctx.stroke();
 		}
 		for (let intersection of intersections) {
