@@ -3,6 +3,7 @@
 	const canvas = document.getElementById('canvas');
 	const drawTypeSelectors = document.forms["drawType"].elements["drawType"];
 	const ctx = canvas.getContext('2d');
+	const shapeList = document.getElementById('shapes');
 
 	const user = {
 		x: 0,
@@ -177,6 +178,24 @@
 		user.mouseDown = false;
 	});
 
+	function createShapeText(name, shapes) {
+		let id = shapes.length - 1;
+		let newEl = document.createElement("p");
+		let text = document.createTextNode(name + " " + id);
+
+		var checkbox = document.createElement('input');
+		checkbox.type = "checkbox";
+		checkbox.checked = true;
+		checkbox.onchange = function () {
+			shapes[id].checked = checkbox.checked;
+			console.log(shapes[id]);
+		}
+
+		newEl.appendChild(text);
+		newEl.appendChild(checkbox);
+		shapeList.appendChild(newEl);
+	}
+
 	function update() {
 		if (nodes.length > 1) {
 			let p1 = nodes.pop();
@@ -189,14 +208,16 @@
 				if (minIntersection) {
 					line = edges(p2, minIntersection);
 				}
+				line.checked = true;
 				lines.push(line);
+				createShapeText('line', lines);
 			} else if (user.drawType === 'circle') {
 				let nodeRadius = Math.hypot(p1.x - p2.x, p1.y - p2.y);
 				if (minIntersection) {
 					nodeRadius = Math.hypot(p2.x - minIntersection.x, p2.y - minIntersection.y);
 				}
-
-				circles.push({centre: p2, radius: nodeRadius});
+				circles.push({centre: p2, radius: nodeRadius, checked: true});
+				createShapeText('circle', circles);
 			}
 
 			intersections = []
@@ -266,15 +287,19 @@
 		}
 
 		for (let line of lines) {
-			ctx.beginPath();
-			ctx.moveTo(line.start.x, line.start.y);
-			ctx.lineTo(line.end.x, line.end.y);
-			ctx.stroke();
+			if (line.checked) {
+				ctx.beginPath();
+				ctx.moveTo(line.start.x, line.start.y);
+				ctx.lineTo(line.end.x, line.end.y);
+				ctx.stroke();
+			}
 		}
 		for (let circle of circles) {
-			ctx.beginPath();
-			ctx.arc(circle.centre.x, circle.centre.y, circle.radius, 0, 2*Math.PI);
-			ctx.stroke();
+			if (circle.checked) {
+				ctx.beginPath();
+				ctx.arc(circle.centre.x, circle.centre.y, circle.radius, 0, 2*Math.PI);
+				ctx.stroke();
+			}
 		}
 		requestAnimationFrame(render);
 	}
