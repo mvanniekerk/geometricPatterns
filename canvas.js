@@ -157,34 +157,92 @@
 			let p1 = nodes.pop();
 			let p2 = nodes.pop();
 
+			let minDist = 1 << 30;
+			let minIntersection = null;
+			for (let intersection of intersections) {
+				let distance = Math.hypot(user.x - intersection.x, user.y - intersection.y);
+				if (distance < minDist) {
+					minDist = distance;
+					minIntersection = intersection;
+				}
+			}
+
 			if (user.drawType === 'line') {
 				let line = edges(p1, p2);
+				if (minIntersection !== null && minDist <= radius) {
+					line = edges(p2, minIntersection);
+				}
 				lines.push(line);
 			} else if (user.drawType === 'circle') {
-				let radius = Math.hypot(Math.abs(p1.x - p2.x), Math.abs(p1.y - p2.y));
+				let nodeRadius = Math.hypot(p1.x - p2.x, p1.y - p2.y);
+				if (minIntersection !== null && minDist <= radius) {
+					nodeRadius = Math.hypot(p2.x - minIntersection.x, p2.y - minIntersection.y);
+				}
 
-				circles.push({centre: p2, radius: radius});
+				circles.push({centre: p2, radius: nodeRadius});
+			}
+
+			intersections = []
+
+			for (let l1 = 0; l1 < lines.length; l1++) {
+				for (let l2 = 0; l2 < l1; l2++) {
+					intersections.push(intersect(lines[l1], lines[l2]));
+				}
+			}
+
+			for (let circle of circles) {
+				for (let line of lines) {
+					intersections.push(...circleLineIntersect(circle, line)); 
+				}
+			}
+
+			for (let c1 = 0; c1 < circles.length; c1++) {
+				for (let c2 = 0; c2 < c1; c2++) {
+					intersections.push(...circleIntersect(circles[c1], circles[c2]));
+				}
+			}
+		}
+	}
+
+	function newShape() {
+		let minDist = 1 << 30;
+		let minIntersection = null;
+		for (let intersection of intersections) {
+			let distance = Math.hypot(user.x - intersection.x, user.y - intersection.y);
+			if (distance < minDist) {
+				minDist = distance;
+				minIntersection = intersection;
 			}
 		}
 
-		intersections = []
-
-		for (let l1 = 0; l1 < lines.length; l1++) {
-			for (let l2 = 0; l2 < l1; l2++) {
-				intersections.push(intersect(lines[l1], lines[l2]));
-			}
+		if (minIntersection !== null && minDist <= radius) {
+			ctx.beginPath();
+			ctx.arc(minIntersection.x, minIntersection.y, radius, 0, 2*Math.PI);
+			ctx.fill();
 		}
 
-		for (let circle of circles) {
-			for (let line of lines) {
-				intersections.push(...circleLineIntersect(circle, line)); 
+		if (user.drawType === 'line') {
+			let line = edges(nodes[0], {x: user.x, y: user.y});
+			if (minIntersection !== null && minDist <= radius) {
+				line = edges(nodes[0], minIntersection);
 			}
-		}
 
-		for (let c1 = 0; c1 < circles.length; c1++) {
-			for (let c2 = 0; c2 < c1; c2++) {
-				intersections.push(...circleIntersect(circles[c1], circles[c2]));
+			if (line !== null) {
+				ctx.beginPath();
+				ctx.moveTo(line.start.x, line.start.y);
+				ctx.lineTo(line.end.x, line.end.y);
+				ctx.stroke();
 			}
+		} else if (user.drawType === 'circle') {
+			let node = nodes[0]
+			let nodeRadius = Math.hypot(node.x - user.x, node.y - user.y);
+			if (minIntersection !== null && minDist <= radius) {
+				nodeRadius = Math.hypot(node.x - minIntersection.x, node.y - minIntersection.y);
+			}
+
+			ctx.beginPath();
+			ctx.arc(node.x, node.y, nodeRadius, 0, 2*Math.PI);
+			ctx.stroke();
 		}
 	}
 
@@ -193,23 +251,7 @@
 		ctx.clearRect(0, 0, canvas.width, canvas.height);
 
 		if (nodes.length === 1 && user.mouseDown) {
-			if (user.drawType === 'line') {
-				let line = edges(nodes[0], {x: user.x, y: user.y});
-
-				if (line !== null) {
-					ctx.beginPath();
-					ctx.moveTo(line.start.x, line.start.y);
-					ctx.lineTo(line.end.x, line.end.y);
-					ctx.stroke();
-				}
-			} else if (user.drawType === 'circle') {
-				let node = nodes[0]
-				let radius = Math.hypot(Math.abs(node.x - user.x), Math.abs(node.y - user.y));
-
-				ctx.beginPath();
-				ctx.arc(node.x, node.y, radius, 0, 2*Math.PI);
-				ctx.stroke();
-			}
+			newShape();
 		}
 
 		for (let line of lines) {
@@ -222,11 +264,6 @@
 			ctx.beginPath();
 			ctx.arc(circle.centre.x, circle.centre.y, circle.radius, 0, 2*Math.PI);
 			ctx.stroke();
-		}
-		for (let intersection of intersections) {
-			ctx.beginPath();
-			ctx.arc(intersection.x, intersection.y, radius, 0, 2*Math.PI);
-			ctx.fill();
 		}
 		requestAnimationFrame(render);
 	}
