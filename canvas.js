@@ -57,7 +57,8 @@
 		return {x, y};
 	}
 
-	function circleIntersect(circle, line) 
+	// http://mathworld.wolfram.com/Circle-LineIntersection.html 
+	function circleLineIntersect(circle, line) 
 	{
 		let x1 = line.start.x - circle.centre.x;
 		let x2 = line.end.x - circle.centre.x;
@@ -86,6 +87,30 @@
 		let yi2 = (-D*dx - Math.abs(dy)*Math.sqrt(discr)) / (dr*dr) + circle.centre.y;
 
 		return [{x: xi1, y: yi1}, {x: xi2, y: yi2}]
+	}
+
+	// https://stackoverflow.com/questions/3349125/circle-circle-intersection-points 
+	function circleIntersect(c1, c2) {
+		let d = Math.hypot(c1.centre.x - c2.centre.x, c1.centre.y - c2.centre.y);
+
+		if (d > c1.radius + c2.radius || d < Math.abs(c1.radius - c2.radius)) {
+			return [];
+		} else if (d == 0 && c1.radius === c2.radius) {
+			console.log('two circles are the same');
+		}
+
+		let a = (c1.radius*c1.radius - c2.radius*c2.radius + d*d) / (2*d);
+		let h = Math.sqrt(c1.radius*c1.radius - a*a);
+		let xm = c1.centre.x + a*(c2.centre.x - c1.centre.x)/d;
+		let ym = c1.centre.y + a*(c2.centre.y - c1.centre.y)/d;
+
+		let xs1 = xm + h*(c1.centre.y - c2.centre.y)/d;
+		let xs2 = xm - h*(c1.centre.y - c2.centre.y)/d;
+
+		let ys1 = ym - h*(c1.centre.x - c2.centre.x)/d;
+		let ys2 = ym + h*(c1.centre.x - c2.centre.x)/d;
+
+		return [{x: xs1, y: ys1}, {x: xs2, y: ys2}];
 	}
 
 	function edges(p1, p2)
@@ -152,7 +177,13 @@
 
 		for (let circle of circles) {
 			for (let line of lines) {
-				intersections.push(...circleIntersect(circle, line)); 
+				intersections.push(...circleLineIntersect(circle, line)); 
+			}
+		}
+
+		for (let c1 = 0; c1 < circles.length; c1++) {
+			for (let c2 = 0; c2 < c1; c2++) {
+				intersections.push(...circleIntersect(circles[c1], circles[c2]));
 			}
 		}
 	}
