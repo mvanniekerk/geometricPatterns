@@ -1,9 +1,27 @@
 (function main() {
 	"use strict"
-	const canvas = document.getElementById('canvas');
+	const canvas = <HTMLCanvasElement> document.getElementById('canvas');
 	const drawTypeSelectors = document.forms["drawType"].elements["drawType"];
-	const ctx = canvas.getContext('2d');
-	const shapeList = document.getElementById('shapes');
+	const ctx = <CanvasRenderingContext2D> canvas.getContext('2d');
+	const shapeList = document.getElementById('shapes')!;
+	const undoButton = document.getElementById('undo')!;
+
+	interface Point {
+		x: number; 
+		y: number;
+	}
+
+	interface Circle {
+		center: Point;
+		radius: number;
+		checked: boolean;
+	}
+
+	interface Line {
+		start: Point;
+		end: Point;
+		checked: boolean;
+	}
 
 	const user = {
 		x: 0,
@@ -31,15 +49,15 @@
 		}
 	};
 
-	const nodes = [];
-	const lines = [];
-	const circles = [];
-	var intersections = [];
+	const nodes: Point[] = [];
+	const lines: Line[] = [];
+	const circles: Circle[] = [];
+	var intersections: Point[] = [];
 	const radius = 5;
 	const cWidth = 10000;
 	const cHeight = 10000;
 
-	function intersect(l1, l2)
+	function intersect(l1, l2) : Point
 	{
 		var {start: p1, end: p2} = l1
 		var {start: p3, end: p4} = l2
@@ -65,7 +83,7 @@
 	}
 
 	// http://mathworld.wolfram.com/Circle-LineIntersection.html 
-	function circleLineIntersect(circle, line) 
+	function circleLineIntersect(circle, line) : Point[]
 	{
 		let x1 = line.start.x - circle.center.x;
 		let x2 = line.end.x - circle.center.x;
@@ -97,9 +115,11 @@
 	}
 
 	// https://stackoverflow.com/questions/3349125/circle-circle-intersection-points 
-	function circleIntersect(c1, c2) {
+	function circleIntersect(c1, c2) : Point[]
+	{
 		let d = Math.hypot(c1.center.x - c2.center.x, c1.center.y - c2.center.y);
 
+		// TODO: hancle edge case
 		if (d > c1.radius + c2.radius || d < Math.abs(c1.radius - c2.radius)) {
 			return [];
 		} else if (d == 0 && c1.radius === c2.radius) {
@@ -120,18 +140,20 @@
 		return [{x: xs1, y: ys1}, {x: xs2, y: ys2}];
 	}
 
-	function edges(p1, p2)
+	function edges(p1, p2) : Line
 	{
 		var a = (p1.y - p2.y) / (p1.x - p2.x);
 		if (isNaN(a)) { // horizontal line (initial state)
 			return {
 				start: {x: -cWidth, y: p1.y},
-				end: {x: cWidth, y: p1.y}
+				end: {x: cWidth, y: p1.y},
+				checked: true
 			}
 		} else if (!Number.isFinite(a)) { // vertical line
 			return {
 				start: {x: p1.x, y: -cHeight},
-				end: {x: p1.x, y: cHeight}
+				end: {x: p1.x, y: cHeight},
+				checked: true
 			}
 		}
 		var b = p1.y - a*p1.x;
@@ -140,13 +162,15 @@
 
 		return {
 			start: {x: -cWidth, y: start},
-			end: {x: cWidth, y: end}
+			end: {x: cWidth, y: end},
+			checked: true
 		}
 	};
 
-	function pointInRange() {
+	function pointInRange() : Point | null
+	{
 		let minDist = Infinity;
-		let minIntersection = null;
+		let minIntersection: Point | null = null;
 		for (let intersection of intersections) {
 			let distance = Math.hypot(user.x - intersection.x, user.y - intersection.y);
 			if (distance < minDist) {
@@ -161,6 +185,10 @@
 			return null;
 		}
 	}
+
+	undoButton.addEventListener("click", function (e) {
+		lines.pop();
+	});
 
 	canvas.addEventListener("mousemove", function (e) {
 		var rect = canvas.getBoundingClientRect();
@@ -213,7 +241,6 @@
 		viewPort.zoomFactor = zoomFactor;
 		viewPort.offsetX -= canvas.width / 2 * delta;
 		viewPort.offsetY -= canvas.height / 2 * delta;
-		console.log(viewPort);
 	});
 
 	function createShapeText(name, shapes) {
@@ -237,8 +264,8 @@
 
 	function update() {
 		if (nodes.length > 1) {
-			let p1 = nodes.pop();
-			let p2 = nodes.pop();
+			let p1 = nodes.pop()!;
+			let p2 = nodes.pop()!;
 
 			let minIntersection = pointInRange();
 
@@ -247,7 +274,6 @@
 				if (minIntersection) {
 					line = edges(p2, minIntersection);
 				}
-				line.checked = true;
 				lines.push(line);
 				createShapeText('line', lines);
 			} else if (user.drawType === 'circle') {
