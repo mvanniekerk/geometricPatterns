@@ -2,15 +2,25 @@
 <head>
 	<meta content="text/html;charset=utf-8" http-equiv="Content-Type">
 	<meta content="utf-8" http-equiv="encoding">
+	<link rel="stylesheet" href="canvas.css">
 </head>
 <body style="margin: 0">
-	<canvas id="canvas" width="500px" height="500px"></canvas>
-	<form name="drawType">
-		<input type="radio" name="drawType" value="line" checked>
-		<label for="line">line</label>
-		<input type="radio" name="drawType" value="circle">
-		<label for="circle">circle</label>
-	</form>
+	<div class="wrapper">
+		<div class="canvas">
+			<canvas id="canvas" width="800px" height="800px"></canvas>
+		</div>
+		<div class="drawType">
+			<form name="drawType">
+				<input type="radio" name="drawType" value="line" checked>
+				<label for="line">line</label>
+				<input type="radio" name="drawType" value="circle">
+				<label for="circle">circle</label>
+			</form>
+		</div>
+		<div class="shapeList">
+			<ul id="shapes"></ul>
+		</div>
+	</div>
 	<script type="text/javascript" src="canvas.js"></script>
 </body>
 </html>

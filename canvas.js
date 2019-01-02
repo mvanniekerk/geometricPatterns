@@ -16,12 +16,10 @@
 	for (let radio of drawTypeSelectors) {
 		radio.onclick = function (e) {
 			user.drawType = radio.value;
-			console.log(radio.value);
 		};
 
 		if (radio.checked) {
 			user.drawType = radio.value;
-			console.log(user.drawType);
 		}
 	};
 
@@ -180,7 +178,7 @@
 
 	function createShapeText(name, shapes) {
 		let id = shapes.length - 1;
-		let newEl = document.createElement("p");
+		let newEl = document.createElement("li");
 		let text = document.createTextNode(name + " " + id);
 
 		var checkbox = document.createElement('input');
@@ -188,7 +186,6 @@
 		checkbox.checked = true;
 		checkbox.onchange = function () {
 			shapes[id].checked = checkbox.checked;
-			console.log(shapes[id]);
 		}
 
 		newEl.appendChild(text);

@@ -1,0 +1,18 @@
+.wrapper {
+	display: grid;
+	grid-template-columns: 3;
+	grid-gap: 10px;
+	align-items: start;
+}
+
+.canvas {
+	grid-column: 1 / 2;
+}
+
+.drawType {
+	grid-column: 2 / 3;
+}
+
+.shapeList {
+	grid-column: 3 / 4;
+}
