@@ -312,7 +312,27 @@
 				}
 			}
 		}
-		console.log(intersections);
+	}
+
+	function drawCircle(circle: Circle) {
+		let x = circle.center.x * viewPort.zoomFactor + viewPort.offsetX;	
+		let y = circle.center.y * viewPort.zoomFactor + viewPort.offsetY
+		let radius = circle.radius * viewPort.zoomFactor;
+		ctx.beginPath();
+		ctx.arc(x, y, radius, 0, 2*Math.PI);
+		ctx.stroke();
+
+	}
+
+	function drawLine(line: Line) {
+		let startX = line.start.x * viewPort.zoomFactor + viewPort.offsetX;
+		let startY = line.start.y * viewPort.zoomFactor + viewPort.offsetY;
+		let endX = line.end.x * viewPort.zoomFactor + viewPort.offsetX;
+		let endY = line.end.y * viewPort.zoomFactor + viewPort.offsetY;
+		ctx.beginPath();
+		ctx.moveTo(startX, startY);
+		ctx.lineTo(endX, endY);
+		ctx.stroke();
 	}
 
 	function newShape() {
@@ -325,10 +345,7 @@
 			}
 
 			if (line !== null) {
-				ctx.beginPath();
-				ctx.moveTo(line.start.x * viewPort.zoomFactor + viewPort.offsetX, line.start.y * viewPort.zoomFactor + viewPort.offsetY);
-				ctx.lineTo(line.end.x * viewPort.zoomFactor + viewPort.offsetX, line.end.y * viewPort.zoomFactor + viewPort.offsetY);
-				ctx.stroke();
+				drawLine(line);
 			}
 		} else if (user.drawType === 'circle') {
 			let node = nodes[0]
@@ -336,10 +353,8 @@
 			if (minIntersection) {
 				nodeRadius = Math.hypot(node.x - minIntersection.x, node.y - minIntersection.y);
 			}
+			drawCircle({center: {x: node.x, y: node.y}, radius: nodeRadius, checked: true});
 
-			ctx.beginPath();
-			ctx.arc(node.x * viewPort.zoomFactor + viewPort.offsetX, node.y * viewPort.zoomFactor + viewPort.offsetY, nodeRadius * viewPort.zoomFactor, 0, 2*Math.PI);
-			ctx.stroke();
 		}
 	}
 
@@ -356,22 +371,19 @@
 		let minIntersection = pointInRange();
 
 		if (minIntersection) {
+			let x = minIntersection.x * viewPort.zoomFactor + viewPort.offsetX;
+			let y = minIntersection.y * viewPort.zoomFactor + viewPort.offsetY; 
 			ctx.beginPath();
-			ctx.arc(minIntersection.x * viewPort.zoomFactor + viewPort.offsetX, minIntersection.y * viewPort.zoomFactor + viewPort.offsetY, radius, 0, 2*Math.PI);
+			ctx.arc(x, y, radius, 0, 2*Math.PI);
 			ctx.fill();
 		}
 
 		for (let shape of shapes) {
 			if (shape.checked) {
 				if (isLine(shape)) {
-					ctx.beginPath();
-					ctx.moveTo(shape.start.x * viewPort.zoomFactor + viewPort.offsetX, shape.start.y * viewPort.zoomFactor + viewPort.offsetY);
-					ctx.lineTo(shape.end.x * viewPort.zoomFactor + viewPort.offsetX, shape.end.y * viewPort.zoomFactor + viewPort.offsetY);
-					ctx.stroke();
+					drawLine(shape);
 				} else if (isCircle(shape)) {
-					ctx.beginPath();
-					ctx.arc(shape.center.x * viewPort.zoomFactor + viewPort.offsetX, shape.center.y * viewPort.zoomFactor + viewPort.offsetY, shape.radius * viewPort.zoomFactor, 0, 2*Math.PI);
-					ctx.stroke();
+					drawCircle(shape);
 				}
 			}
 		}
