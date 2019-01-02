@@ -29,8 +29,12 @@
 	var intersections = [];
 	const radius = 5;
 	var zoomFactor = 1;
-	const cWidth = canvas.width;
-	const cHeight = canvas.height;
+	var offsetX = 0;
+	var offsetY = 0;
+	var lastX = 0;
+	var lastY = 0;
+	const cWidth = 10000;
+	const cHeight = 10000;
 
 	function intersect(l1, l2)
 	{
@@ -60,10 +64,10 @@
 	// http://mathworld.wolfram.com/Circle-LineIntersection.html 
 	function circleLineIntersect(circle, line) 
 	{
-		let x1 = line.start.x - circle.centre.x;
-		let x2 = line.end.x - circle.centre.x;
-		let y1 = line.start.y - circle.centre.y;
-		let y2 = line.end.y - circle.centre.y;
+		let x1 = line.start.x - circle.center.x;
+		let x2 = line.end.x - circle.center.x;
+		let y1 = line.start.y - circle.center.y;
+		let y2 = line.end.y - circle.center.y;
 		let r = circle.radius;
 
 		let dx = x2 - x1;
@@ -80,18 +84,18 @@
 			console.log('tangent line');
 		}
 
-		let xi1 = (D*dy + sgn(dy)*dx*Math.sqrt(discr)) / (dr*dr) + circle.centre.x;
-		let yi1 = (-D*dx + Math.abs(dy)*Math.sqrt(discr)) / (dr*dr) + circle.centre.y;
+		let xi1 = (D*dy + sgn(dy)*dx*Math.sqrt(discr)) / (dr*dr) + circle.center.x;
+		let yi1 = (-D*dx + Math.abs(dy)*Math.sqrt(discr)) / (dr*dr) + circle.center.y;
 		
-		let xi2 = (D*dy - sgn(dy)*dx*Math.sqrt(discr)) / (dr*dr) + circle.centre.x;
-		let yi2 = (-D*dx - Math.abs(dy)*Math.sqrt(discr)) / (dr*dr) + circle.centre.y;
+		let xi2 = (D*dy - sgn(dy)*dx*Math.sqrt(discr)) / (dr*dr) + circle.center.x;
+		let yi2 = (-D*dx - Math.abs(dy)*Math.sqrt(discr)) / (dr*dr) + circle.center.y;
 
 		return [{x: xi1, y: yi1}, {x: xi2, y: yi2}]
 	}
 
 	// https://stackoverflow.com/questions/3349125/circle-circle-intersection-points 
 	function circleIntersect(c1, c2) {
-		let d = Math.hypot(c1.centre.x - c2.centre.x, c1.centre.y - c2.centre.y);
+		let d = Math.hypot(c1.center.x - c2.center.x, c1.center.y - c2.center.y);
 
 		if (d > c1.radius + c2.radius || d < Math.abs(c1.radius - c2.radius)) {
 			return [];
@@ -101,14 +105,14 @@
 
 		let a = (c1.radius*c1.radius - c2.radius*c2.radius + d*d) / (2*d);
 		let h = Math.sqrt(c1.radius*c1.radius - a*a);
-		let xm = c1.centre.x + a*(c2.centre.x - c1.centre.x)/d;
-		let ym = c1.centre.y + a*(c2.centre.y - c1.centre.y)/d;
+		let xm = c1.center.x + a*(c2.center.x - c1.center.x)/d;
+		let ym = c1.center.y + a*(c2.center.y - c1.center.y)/d;
 
-		let xs1 = xm + h*(c1.centre.y - c2.centre.y)/d;
-		let xs2 = xm - h*(c1.centre.y - c2.centre.y)/d;
+		let xs1 = xm + h*(c1.center.y - c2.center.y)/d;
+		let xs2 = xm - h*(c1.center.y - c2.center.y)/d;
 
-		let ys1 = ym - h*(c1.centre.x - c2.centre.x)/d;
-		let ys2 = ym + h*(c1.centre.x - c2.centre.x)/d;
+		let ys1 = ym - h*(c1.center.x - c2.center.x)/d;
+		let ys2 = ym + h*(c1.center.x - c2.center.x)/d;
 
 		return [{x: xs1, y: ys1}, {x: xs2, y: ys2}];
 	}
@@ -116,22 +120,23 @@
 	function edges(p1, p2)
 	{
 		var a = (p1.y - p2.y) / (p1.x - p2.x);
-		if (isNaN(a)) {
+		if (isNaN(a)) { // horizontal line (initial state)
 			return {
-				start: {x: 0, y: p1.y},
+				start: {x: -cWidth, y: p1.y},
 				end: {x: cWidth, y: p1.y}
 			}
-		} else if (!Number.isFinite(a)) {
+		} else if (!Number.isFinite(a)) { // vertical line
 			return {
-				start: {x: p1.x, y: 0},
+				start: {x: p1.x, y: -cHeight},
 				end: {x: p1.x, y: cHeight}
 			}
 		}
 		var b = p1.y - a*p1.x;
 		var end = a*cWidth + b;
+		var start = a*-cWidth + b;
 
 		return {
-			start: {x: 0, y: b},
+			start: {x: -cWidth, y: start},
 			end: {x: cWidth, y: end}
 		}
 	};
@@ -156,11 +161,22 @@
 
 	canvas.addEventListener("mousemove", function (e) {
 		var rect = canvas.getBoundingClientRect();
-		user.x = (e.clientX - rect.left) / zoomFactor;
-		user.y = (e.clientY - rect.top) / zoomFactor;
+		if (e.buttons != 2) { // not the right mouse button
+			user.x = (e.clientX - rect.left - offsetX) / zoomFactor;
+			user.y = (e.clientY - rect.top - offsetY) / zoomFactor;
+		} else if (e.buttons == 2) { // right mouse button
+			offsetX += e.clientX - lastX;
+			offsetY += e.clientY - lastY;
+		}
+		lastX = e.clientX;
+		lastY = e.clientY;
 	});
 
 	canvas.addEventListener("mousedown", function (e) {
+		if (e.button == 2) { // right mouse button
+			return;
+		}
+
 		let minIntersection = pointInRange();
 
 		if (minIntersection) {
@@ -172,7 +188,15 @@
 		user.mouseDown = true;
 	});
 
+	canvas.addEventListener("contextmenu", function (e) {
+		e.preventDefault();
+	});
+
 	canvas.addEventListener("mouseup", function (e) {
+		if (e.button == 2) { // right mouse button
+			return;
+		}
+
 		nodes.push({x: user.x, y: user.y});
 		user.mouseDown = false;
 	});
@@ -219,7 +243,7 @@
 				if (minIntersection) {
 					nodeRadius = Math.hypot(p2.x - minIntersection.x, p2.y - minIntersection.y);
 				}
-				circles.push({centre: p2, radius: nodeRadius, checked: true});
+				circles.push({center: p2, radius: nodeRadius, checked: true});
 				createShapeText('circle', circles);
 			}
 
@@ -256,8 +280,8 @@
 
 			if (line !== null) {
 				ctx.beginPath();
-				ctx.moveTo(line.start.x * zoomFactor, line.start.y * zoomFactor);
-				ctx.lineTo(line.end.x * zoomFactor, line.end.y * zoomFactor);
+				ctx.moveTo(line.start.x * zoomFactor + offsetX, line.start.y * zoomFactor + offsetY);
+				ctx.lineTo(line.end.x * zoomFactor + offsetX, line.end.y * zoomFactor + offsetY);
 				ctx.stroke();
 			}
 		} else if (user.drawType === 'circle') {
@@ -268,7 +292,7 @@
 			}
 
 			ctx.beginPath();
-			ctx.arc(node.x * zoomFactor, node.y * zoomFactor, nodeRadius * zoomFactor, 0, 2*Math.PI);
+			ctx.arc(node.x * zoomFactor + offsetX, node.y * zoomFactor + offsetY, nodeRadius * zoomFactor, 0, 2*Math.PI);
 			ctx.stroke();
 		}
 	}
@@ -285,22 +309,22 @@
 
 		if (minIntersection) {
 			ctx.beginPath();
-			ctx.arc(minIntersection.x * zoomFactor, minIntersection.y * zoomFactor, radius * zoomFactor, 0, 2*Math.PI);
+			ctx.arc(minIntersection.x * zoomFactor + offsetX, minIntersection.y * zoomFactor + offsetY, radius * zoomFactor, 0, 2*Math.PI);
 			ctx.fill();
 		}
 
 		for (let line of lines) {
 			if (line.checked) {
 				ctx.beginPath();
-				ctx.moveTo(line.start.x * zoomFactor, line.start.y * zoomFactor);
-				ctx.lineTo(line.end.x * zoomFactor, line.end.y * zoomFactor);
+				ctx.moveTo(line.start.x * zoomFactor + offsetX, line.start.y * zoomFactor + offsetY);
+				ctx.lineTo(line.end.x * zoomFactor + offsetX, line.end.y * zoomFactor + offsetY);
 				ctx.stroke();
 			}
 		}
 		for (let circle of circles) {
 			if (circle.checked) {
 				ctx.beginPath();
-				ctx.arc(circle.centre.x * zoomFactor, circle.centre.y * zoomFactor, circle.radius * zoomFactor, 0, 2*Math.PI);
+				ctx.arc(circle.center.x * zoomFactor + offsetX, circle.center.y * zoomFactor + offsetY, circle.radius * zoomFactor, 0, 2*Math.PI);
 				ctx.stroke();
 			}
 		}
