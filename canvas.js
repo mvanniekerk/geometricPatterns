@@ -28,6 +28,7 @@
 	const circles = [];
 	var intersections = [];
 	const radius = 5;
+	var zoomFactor = 1;
 	const cWidth = canvas.width;
 	const cHeight = canvas.height;
 
@@ -155,8 +156,8 @@
 
 	canvas.addEventListener("mousemove", function (e) {
 		var rect = canvas.getBoundingClientRect();
-		user.x = e.clientX - rect.left;
-		user.y = e.clientY - rect.top;
+		user.x = (e.clientX - rect.left) / zoomFactor;
+		user.y = (e.clientY - rect.top) / zoomFactor;
 	});
 
 	canvas.addEventListener("mousedown", function (e) {
@@ -174,6 +175,11 @@
 	canvas.addEventListener("mouseup", function (e) {
 		nodes.push({x: user.x, y: user.y});
 		user.mouseDown = false;
+	});
+
+	canvas.addEventListener("wheel", function (e) {
+		zoomFactor += e.deltaY / 100;
+		console.log(zoomFactor);
 	});
 
 	function createShapeText(name, shapes) {
@@ -250,8 +256,8 @@
 
 			if (line !== null) {
 				ctx.beginPath();
-				ctx.moveTo(line.start.x, line.start.y);
-				ctx.lineTo(line.end.x, line.end.y);
+				ctx.moveTo(line.start.x * zoomFactor, line.start.y * zoomFactor);
+				ctx.lineTo(line.end.x * zoomFactor, line.end.y * zoomFactor);
 				ctx.stroke();
 			}
 		} else if (user.drawType === 'circle') {
@@ -262,7 +268,7 @@
 			}
 
 			ctx.beginPath();
-			ctx.arc(node.x, node.y, nodeRadius, 0, 2*Math.PI);
+			ctx.arc(node.x * zoomFactor, node.y * zoomFactor, nodeRadius * zoomFactor, 0, 2*Math.PI);
 			ctx.stroke();
 		}
 	}
@@ -279,22 +285,22 @@
 
 		if (minIntersection) {
 			ctx.beginPath();
-			ctx.arc(minIntersection.x, minIntersection.y, radius, 0, 2*Math.PI);
+			ctx.arc(minIntersection.x * zoomFactor, minIntersection.y * zoomFactor, radius * zoomFactor, 0, 2*Math.PI);
 			ctx.fill();
 		}
 
 		for (let line of lines) {
 			if (line.checked) {
 				ctx.beginPath();
-				ctx.moveTo(line.start.x, line.start.y);
-				ctx.lineTo(line.end.x, line.end.y);
+				ctx.moveTo(line.start.x * zoomFactor, line.start.y * zoomFactor);
+				ctx.lineTo(line.end.x * zoomFactor, line.end.y * zoomFactor);
 				ctx.stroke();
 			}
 		}
 		for (let circle of circles) {
 			if (circle.checked) {
 				ctx.beginPath();
-				ctx.arc(circle.centre.x, circle.centre.y, circle.radius, 0, 2*Math.PI);
+				ctx.arc(circle.centre.x * zoomFactor, circle.centre.y * zoomFactor, circle.radius * zoomFactor, 0, 2*Math.PI);
 				ctx.stroke();
 			}
 		}
