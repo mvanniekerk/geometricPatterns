@@ -226,6 +226,8 @@
 		checkbox.checked = true;
 		checkbox.onchange = function () {
 			shapes[id].checked = checkbox.checked;
+			update();
+			console.log(intersections);
 		}
 
 		newEl.appendChild(text);
@@ -256,23 +258,29 @@
 				circles.push({center: p2, radius: nodeRadius, checked: true});
 				createShapeText('circle', circles);
 			}
+		}
 
-			intersections = []
+		intersections = []
 
-			for (let l1 = 0; l1 < lines.length; l1++) {
-				for (let l2 = 0; l2 < l1; l2++) {
+		for (let l1 = 0; l1 < lines.length; l1++) {
+			for (let l2 = 0; l2 < l1; l2++) {
+				if (lines[l1].checked && lines[l2].checked) {
 					intersections.push(intersect(lines[l1], lines[l2]));
 				}
 			}
+		}
 
-			for (let circle of circles) {
-				for (let line of lines) {
+		for (let circle of circles) {
+			for (let line of lines) {
+				if (circle.checked && line.checked) {
 					intersections.push(...circleLineIntersect(circle, line)); 
 				}
 			}
+		}
 
-			for (let c1 = 0; c1 < circles.length; c1++) {
-				for (let c2 = 0; c2 < c1; c2++) {
+		for (let c1 = 0; c1 < circles.length; c1++) {
+			for (let c2 = 0; c2 < c1; c2++) {
+				if (circles[c1].checked && circles[c2].checked) {
 					intersections.push(...circleIntersect(circles[c1], circles[c2]));
 				}
 			}
@@ -308,7 +316,9 @@
 	}
 
 	function render() {
-		update();
+		if (nodes.length > 1) {
+			update();
+		}
 		ctx.clearRect(0, 0, canvas.width, canvas.height);
 
 		if (nodes.length === 1 && user.mouseDown) {
