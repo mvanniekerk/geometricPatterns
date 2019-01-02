@@ -6,6 +6,8 @@
 	const shapeList = document.getElementById('shapes')!;
 	const undoButton = document.getElementById('undo')!;
 
+	type Shape = Circle | Line;
+
 	interface Point {
 		x: number; 
 		y: number;
@@ -17,10 +19,18 @@
 		checked: boolean;
 	}
 
+	function isCircle(o: any): o is Circle {
+		return 'center' in o && 'radius' in o;
+	}
+
 	interface Line {
 		start: Point;
 		end: Point;
 		checked: boolean;
+	}
+
+	function isLine(o: any): o is Line {
+		return 'start' in o && 'end' in o;
 	}
 
 	const user = {
@@ -50,8 +60,7 @@
 	};
 
 	const nodes: Point[] = [];
-	const lines: Line[] = [];
-	const circles: Circle[] = [];
+	const shapes: Shape[] = [];
 	var intersections: Point[] = [];
 	const radius = 5;
 	const cWidth = 10000;
@@ -187,7 +196,7 @@
 	}
 
 	undoButton.addEventListener("click", function (e) {
-		lines.pop();
+		shapes.pop();
 	});
 
 	canvas.addEventListener("mousemove", function (e) {
@@ -274,43 +283,36 @@
 				if (minIntersection) {
 					line = edges(p2, minIntersection);
 				}
-				lines.push(line);
-				createShapeText('line', lines);
+				shapes.push(line);
+				createShapeText('line', shapes);
 			} else if (user.drawType === 'circle') {
 				let nodeRadius = Math.hypot(p1.x - p2.x, p1.y - p2.y);
 				if (minIntersection) {
 					nodeRadius = Math.hypot(p2.x - minIntersection.x, p2.y - minIntersection.y);
 				}
-				circles.push({center: p2, radius: nodeRadius, checked: true});
-				createShapeText('circle', circles);
+				shapes.push({center: p2, radius: nodeRadius, checked: true});
+				createShapeText('circle', shapes);
 			}
 		}
 
 		intersections = []
 
-		for (let l1 = 0; l1 < lines.length; l1++) {
+		for (let l1 = 0; l1 < shapes.length; l1++) {
 			for (let l2 = 0; l2 < l1; l2++) {
-				if (lines[l1].checked && lines[l2].checked) {
-					intersections.push(intersect(lines[l1], lines[l2]));
+				if (shapes[l1].checked && shapes[l2].checked) {
+					if (isLine(shapes[l1]) && isLine(shapes[l2])) {
+						intersections.push(intersect(shapes[l1], shapes[l2]));
+					} else if (isCircle(shapes[l1]) && isCircle(shapes[l2])) {
+						intersections.push(...circleIntersect(shapes[l1], shapes[l2]));
+					} else if (isCircle(shapes[l1]) && isLine(shapes[l2])) {
+						intersections.push(...circleLineIntersect(shapes[l1], shapes[l2])); 
+					} else if (isLine(shapes[l1]) && isCircle(shapes[l2])) {
+						intersections.push(...circleLineIntersect(shapes[l2], shapes[l1])); 
+					}
 				}
 			}
 		}
-
-		for (let circle of circles) {
-			for (let line of lines) {
-				if (circle.checked && line.checked) {
-					intersections.push(...circleLineIntersect(circle, line)); 
-				}
-			}
-		}
-
-		for (let c1 = 0; c1 < circles.length; c1++) {
-			for (let c2 = 0; c2 < c1; c2++) {
-				if (circles[c1].checked && circles[c2].checked) {
-					intersections.push(...circleIntersect(circles[c1], circles[c2]));
-				}
-			}
-		}
+		console.log(intersections);
 	}
 
 	function newShape() {
@@ -359,19 +361,18 @@
 			ctx.fill();
 		}
 
-		for (let line of lines) {
-			if (line.checked) {
-				ctx.beginPath();
-				ctx.moveTo(line.start.x * viewPort.zoomFactor + viewPort.offsetX, line.start.y * viewPort.zoomFactor + viewPort.offsetY);
-				ctx.lineTo(line.end.x * viewPort.zoomFactor + viewPort.offsetX, line.end.y * viewPort.zoomFactor + viewPort.offsetY);
-				ctx.stroke();
-			}
-		}
-		for (let circle of circles) {
-			if (circle.checked) {
-				ctx.beginPath();
-				ctx.arc(circle.center.x * viewPort.zoomFactor + viewPort.offsetX, circle.center.y * viewPort.zoomFactor + viewPort.offsetY, circle.radius * viewPort.zoomFactor, 0, 2*Math.PI);
-				ctx.stroke();
+		for (let shape of shapes) {
+			if (shape.checked) {
+				if (isLine(shape)) {
+					ctx.beginPath();
+					ctx.moveTo(shape.start.x * viewPort.zoomFactor + viewPort.offsetX, shape.start.y * viewPort.zoomFactor + viewPort.offsetY);
+					ctx.lineTo(shape.end.x * viewPort.zoomFactor + viewPort.offsetX, shape.end.y * viewPort.zoomFactor + viewPort.offsetY);
+					ctx.stroke();
+				} else if (isCircle(shape)) {
+					ctx.beginPath();
+					ctx.arc(shape.center.x * viewPort.zoomFactor + viewPort.offsetX, shape.center.y * viewPort.zoomFactor + viewPort.offsetY, shape.radius * viewPort.zoomFactor, 0, 2*Math.PI);
+					ctx.stroke();
+				}
 			}
 		}
 		requestAnimationFrame(render);
