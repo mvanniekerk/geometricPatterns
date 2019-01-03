@@ -1,12 +1,13 @@
 (function main() {
 	"use strict"
 	const canvas = <HTMLCanvasElement> document.getElementById('canvas');
-	const drawTypeSelectors = document.forms["drawType"].elements["drawType"];
+	const drawTypeSelectors = (<any>document.forms).drawType.elements.drawType;
 	const ctx = <CanvasRenderingContext2D> canvas.getContext('2d');
 	const shapeList = document.getElementById('shapes')!;
 	const undoButton = document.getElementById('undo')!;
 
 	type Shape = Circle | Line;
+	type Maybe<T> = T | undefined;
 
 	interface Point {
 		x: number; 
@@ -50,7 +51,7 @@
 
 
 	for (let radio of drawTypeSelectors) {
-		radio.onclick = function (e) {
+		radio.onclick = function (e: MouseEvent) {
 			user.drawType = radio.value;
 		};
 
@@ -66,7 +67,7 @@
 	const cWidth = 10000;
 	const cHeight = 10000;
 
-	function intersect(l1, l2) : Point
+	function intersect(l1: Line, l2: Line) : Point
 	{
 		var {start: p1, end: p2} = l1
 		var {start: p3, end: p4} = l2
@@ -92,7 +93,7 @@
 	}
 
 	// http://mathworld.wolfram.com/Circle-LineIntersection.html 
-	function circleLineIntersect(circle, line) : Point[]
+	function circleLineIntersect(circle: Circle, line: Line) : Point[]
 	{
 		let x1 = line.start.x - circle.center.x;
 		let x2 = line.end.x - circle.center.x;
@@ -105,7 +106,7 @@
 		let dr = Math.hypot(dx, dy);
 		let D = x1*y2 - x2*y1
 
-		let sgn = (x) => x < 0 ? -1 : 1;
+		let sgn = (x: number) => x < 0 ? -1 : 1;
 		let discr = r*r*dr*dr-D*D;
 
 		if (discr < 0) {
@@ -124,7 +125,7 @@
 	}
 
 	// https://stackoverflow.com/questions/3349125/circle-circle-intersection-points 
-	function circleIntersect(c1, c2) : Point[]
+	function circleIntersect(c1: Circle, c2: Circle) : Point[]
 	{
 		let d = Math.hypot(c1.center.x - c2.center.x, c1.center.y - c2.center.y);
 
@@ -149,7 +150,7 @@
 		return [{x: xs1, y: ys1}, {x: xs2, y: ys2}];
 	}
 
-	function edges(p1, p2) : Line
+	function edges(p1: Point, p2: Point) : Line
 	{
 		var a = (p1.y - p2.y) / (p1.x - p2.x);
 		if (isNaN(a)) { // horizontal line (initial state)
@@ -176,10 +177,10 @@
 		}
 	};
 
-	function pointInRange() : Point | null
+	function pointInRange() : Maybe<Point>
 	{
 		let minDist = Infinity;
-		let minIntersection: Point | null = null;
+		let minIntersection: Maybe<Point>;
 		for (let intersection of intersections) {
 			let distance = Math.hypot(user.x - intersection.x, user.y - intersection.y);
 			if (distance < minDist) {
@@ -191,7 +192,7 @@
 		if (minIntersection !== null && minDist <= radius / viewPort.zoomFactor) {
 			return minIntersection;
 		} else {
-			return null;
+			return; 
 		}
 	}
 
@@ -252,7 +253,7 @@
 		viewPort.offsetY -= canvas.height / 2 * delta;
 	});
 
-	function createShapeText(name, shapes) {
+	function createShapeText(name: String, shapes: Shape[]) {
 		let id = shapes.length - 1;
 		let newEl = document.createElement("li");
 		let text = document.createTextNode(name + " " + id);
@@ -301,13 +302,13 @@
 			for (let l2 = 0; l2 < l1; l2++) {
 				if (shapes[l1].checked && shapes[l2].checked) {
 					if (isLine(shapes[l1]) && isLine(shapes[l2])) {
-						intersections.push(intersect(shapes[l1], shapes[l2]));
+						intersections.push(intersect(<Line> shapes[l1], <Line> shapes[l2]));
 					} else if (isCircle(shapes[l1]) && isCircle(shapes[l2])) {
-						intersections.push(...circleIntersect(shapes[l1], shapes[l2]));
+						intersections.push(...circleIntersect(<Circle> shapes[l1], <Circle> shapes[l2]));
 					} else if (isCircle(shapes[l1]) && isLine(shapes[l2])) {
-						intersections.push(...circleLineIntersect(shapes[l1], shapes[l2])); 
+						intersections.push(...circleLineIntersect(<Circle> shapes[l1], <Line> shapes[l2])); 
 					} else if (isLine(shapes[l1]) && isCircle(shapes[l2])) {
-						intersections.push(...circleLineIntersect(shapes[l2], shapes[l1])); 
+						intersections.push(...circleLineIntersect(<Circle> shapes[l2], <Line> shapes[l1])); 
 					}
 				}
 			}

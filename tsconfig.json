@@ -4,7 +4,7 @@
 			"ES6",
 			"DOM"
 		],
-		"strictNullChecks": true,
+		"strict": true,
 		"watch": true
 	}
 }
