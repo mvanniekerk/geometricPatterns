@@ -11,9 +11,11 @@
 	class Shape {
 		checked: boolean;
 		color: string;
+		intersections: Point[];
 		constructor() {
 			this.checked = true;
 			this.color = 'black';
+			this.intersections = [];
 		}
 		draw() {
 			throw new Error('abstract class shape for draw');
@@ -21,7 +23,14 @@
 		mouseInRange() : boolean {
 			throw new Error('abstract class shape for mouse in range');
 		}
+		intersectLine(line: Line) : void {
+			throw new Error('abstract class shape for intersect line');
+		}
+		intersectCircle(circle: Circle) : void {
+			throw new Error('abstract class shape for intersect circle');
+		}
 	}
+	
 
 	class Circle extends Shape {
 		center: Point;
@@ -47,6 +56,39 @@
 			let fromCenter = Math.hypot(this.center.x - user.x, this.center.y - user.y);
 			let distance = Math.abs(fromCenter - this.radius);
 			return distance <= radius
+		}
+
+		intersectLine(line : Line) : void{
+			this.intersections.push(...circleLineIntersect(this, line));
+		}
+		
+		// https://stackoverflow.com/questions/3349125/circle-circle-intersection-points 
+		intersectCircle(c2: Circle) : void
+		{
+			let c1 = this;
+			let d = Math.hypot(c1.center.x - c2.center.x, c1.center.y - c2.center.y);
+
+			// TODO: handle edge case
+			if (d > c1.radius + c2.radius || d < Math.abs(c1.radius - c2.radius)) {
+				// circles are inside each other
+				return; 
+			} else if (d == 0 && c1.radius === c2.radius) {
+				console.log('two circles are the same');
+			}
+
+			let a = (c1.radius*c1.radius - c2.radius*c2.radius + d*d) / (2*d);
+			let h = Math.sqrt(c1.radius*c1.radius - a*a);
+			let xm = c1.center.x + a*(c2.center.x - c1.center.x)/d;
+			let ym = c1.center.y + a*(c2.center.y - c1.center.y)/d;
+
+			let xs1 = xm + h*(c1.center.y - c2.center.y)/d;
+			let xs2 = xm - h*(c1.center.y - c2.center.y)/d;
+
+			let ys1 = ym - h*(c1.center.x - c2.center.x)/d;
+			let ys2 = ym + h*(c1.center.x - c2.center.x)/d;
+
+			this.intersections.push({x: xs1, y: ys1});
+			this.intersections.push({x: xs2, y: ys2});
 		}
 	}
 
@@ -81,6 +123,39 @@
 			let d = Math.abs(-v2*r2-r1*v1)/Math.hypot(-v2, v1);
 			return d <= radius;
 		}
+
+		intersectLine(l2: Line) : void {
+			let l1 = this;
+			var {start: p1, end: p2} = l1
+			var {start: p3, end: p4} = l2
+
+			var a1 = (p1.y - p2.y) / (p1.x - p2.x);
+			var a2 = (p3.y - p4.y) / (p3.x - p4.x);
+
+			var b1 = p1.y - a1*p1.x;
+			var b2 = p3.y - a2*p3.x;
+
+			if (!Number.isFinite(a1) && Number.isFinite(a2)) {
+				this.intersections.push({x: p1.x, y: p1.x*a2+b2});
+				return;
+			} else if (Number.isFinite(a1) && !Number.isFinite(a2)) {
+				this.intersections.push({x: p3.x, y: p3.x*a1+b1});
+				return;
+			} else if (!Number.isFinite(a1) && !Number.isFinite(a2)) {
+				console.log('both lines are vertical');
+				return;
+			}
+
+			var x = (b2 - b1)/(a1 - a2);
+			var y = a2*x + b2;
+
+			this.intersections.push({x, y});
+		}
+
+		intersectCircle(circle: Circle) : void {
+			this.intersections.push(...circleLineIntersect(circle, this));
+		}
+
 	}
 
 	interface Point {
@@ -116,35 +191,9 @@
 
 	const nodes: Point[] = [];
 	const shapes: Shape[] = [];
-	var intersections: Point[] = [];
 	const radius = 5;
 	const cWidth = 10000;
 	const cHeight = 10000;
-
-	function intersect(l1: Line, l2: Line) : Point
-	{
-		var {start: p1, end: p2} = l1
-		var {start: p3, end: p4} = l2
-
-		var a1 = (p1.y - p2.y) / (p1.x - p2.x);
-		var a2 = (p3.y - p4.y) / (p3.x - p4.x);
-
-		var b1 = p1.y - a1*p1.x;
-		var b2 = p3.y - a2*p3.x;
-
-		if (!Number.isFinite(a1) && Number.isFinite(a2)) {
-			return {x: p1.x, y: p1.x*a2+b2};
-		} else if (Number.isFinite(a1) && !Number.isFinite(a2)) {
-			return {x: p3.x, y: p3.x*a1+b1}
-		} else if (!Number.isFinite(a1) && !Number.isFinite(a2)) {
-			return {x: NaN, y: NaN}
-		}
-
-		var x = (b2 - b1)/(a1 - a2);
-		var y = a2*x + b2;
-
-		return {x, y};
-	}
 
 	// http://mathworld.wolfram.com/Circle-LineIntersection.html 
 	function circleLineIntersect(circle: Circle, line: Line) : Point[]
@@ -178,31 +227,6 @@
 		return [{x: xi1, y: yi1}, {x: xi2, y: yi2}]
 	}
 
-	// https://stackoverflow.com/questions/3349125/circle-circle-intersection-points 
-	function circleIntersect(c1: Circle, c2: Circle) : Point[]
-	{
-		let d = Math.hypot(c1.center.x - c2.center.x, c1.center.y - c2.center.y);
-
-		// TODO: hancle edge case
-		if (d > c1.radius + c2.radius || d < Math.abs(c1.radius - c2.radius)) {
-			return [];
-		} else if (d == 0 && c1.radius === c2.radius) {
-			console.log('two circles are the same');
-		}
-
-		let a = (c1.radius*c1.radius - c2.radius*c2.radius + d*d) / (2*d);
-		let h = Math.sqrt(c1.radius*c1.radius - a*a);
-		let xm = c1.center.x + a*(c2.center.x - c1.center.x)/d;
-		let ym = c1.center.y + a*(c2.center.y - c1.center.y)/d;
-
-		let xs1 = xm + h*(c1.center.y - c2.center.y)/d;
-		let xs2 = xm - h*(c1.center.y - c2.center.y)/d;
-
-		let ys1 = ym - h*(c1.center.x - c2.center.x)/d;
-		let ys2 = ym + h*(c1.center.x - c2.center.x)/d;
-
-		return [{x: xs1, y: ys1}, {x: xs2, y: ys2}];
-	}
 
 	function edges(p1: Point, p2: Point) : Line {
 		var a = (p1.y - p2.y) / (p1.x - p2.x);
@@ -219,10 +243,12 @@
 	}
 
 	function pointInRange() : Maybe<Point> {
-		for (let intersection of intersections) {
-			let distance = Math.hypot(user.x - intersection.x, user.y - intersection.y);
-			if (distance <= radius ) {
-				return intersection;
+		for (let shape of shapes) {
+			for (let intersection of shape.intersections) {
+				let distance = Math.hypot(user.x - intersection.x, user.y - intersection.y);
+				if (distance <= radius ) {
+					return intersection;
+				}
 			}
 		}
 	}
@@ -308,7 +334,6 @@
 		checkbox.onchange = function () {
 			shapes[id].checked = checkbox.checked;
 			update();
-			console.log(intersections);
 		}
 
 		newEl.appendChild(text);
@@ -340,19 +365,14 @@
 			}
 		}
 
-		intersections = []
-
 		for (let l1 = 0; l1 < shapes.length; l1++) {
+			shapes[l1].intersections = [];
 			for (let l2 = 0; l2 < l1; l2++) {
 				if (shapes[l1].checked && shapes[l2].checked) {
-					if (shapes[l1] instanceof Line && shapes[l2] instanceof Line) {
-						intersections.push(intersect(<Line> shapes[l1], <Line> shapes[l2]));
-					} else if (shapes[l1] instanceof Circle && shapes[l2] instanceof Circle) {
-						intersections.push(...circleIntersect(<Circle> shapes[l1], <Circle> shapes[l2]));
-					} else if (shapes[l1] instanceof Circle && shapes[l2] instanceof Line) {
-						intersections.push(...circleLineIntersect(<Circle> shapes[l1], <Line> shapes[l2])); 
-					} else if (shapes[l1] instanceof Line && shapes[l2] instanceof Circle) {
-						intersections.push(...circleLineIntersect(<Circle> shapes[l2], <Line> shapes[l1])); 
+					if (shapes[l2] instanceof Line) {
+						shapes[l1].intersectLine(<Line> shapes[l2]);
+					} else if (shapes[l2] instanceof Circle) {
+						shapes[l1].intersectCircle(<Circle> shapes[l2]);
 					}
 				}
 			}
