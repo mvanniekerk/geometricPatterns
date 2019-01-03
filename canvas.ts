@@ -6,32 +6,86 @@
 	const shapeList = document.getElementById('shapes')!;
 	const undoButton = document.getElementById('undo')!;
 
-	type Shape = Circle | Line;
 	type Maybe<T> = T | undefined;
+
+	class Shape {
+		checked: boolean;
+		color: string;
+		constructor() {
+			this.checked = true;
+			this.color = 'black';
+		}
+		draw() {
+			throw new Error('abstract class shape for draw');
+		}
+		mouseInRange() : boolean {
+			throw new Error('abstract class shape for mouse in range');
+		}
+	}
+
+	class Circle extends Shape {
+		center: Point;
+		radius: number;
+		constructor(center : Point, radius : number) {
+			super();
+			this.center = center;
+			this.radius = radius;
+		}
+
+		draw() {
+			let x = this.center.x * viewPort.zoomFactor + viewPort.offsetX;	
+			let y = this.center.y * viewPort.zoomFactor + viewPort.offsetY
+			let radius = this.radius * viewPort.zoomFactor;
+			ctx.strokeStyle = this.color;
+			this.color = 'black';
+			ctx.beginPath();
+			ctx.arc(x, y, radius, 0, 2*Math.PI);
+			ctx.stroke();
+		}
+
+		mouseInRange() {
+			let fromCenter = Math.hypot(this.center.x - user.x, this.center.y - user.y);
+			let distance = Math.abs(fromCenter - this.radius);
+			return distance <= radius
+		}
+	}
+
+	class Line extends Shape {
+		start: Point;
+		end: Point;
+		constructor(start: Point, end: Point) {
+			super();
+			this.start = start;
+			this.end = end;
+		}
+
+		draw() {
+			let startX = this.start.x * viewPort.zoomFactor + viewPort.offsetX;
+			let startY = this.start.y * viewPort.zoomFactor + viewPort.offsetY;
+			let endX = this.end.x * viewPort.zoomFactor + viewPort.offsetX;
+			let endY = this.end.y * viewPort.zoomFactor + viewPort.offsetY;
+			ctx.strokeStyle = this.color;
+			this.color = 'black';
+			ctx.beginPath();
+			ctx.moveTo(startX, startY);
+			ctx.lineTo(endX, endY);
+			ctx.stroke();
+		}
+
+		// http://mathworld.wolfram.com/Point-LineDistance2-Dimensional.html 
+		mouseInRange() {
+			let v1 = this.end.y - this.start.y;
+			let v2 = -(this.end.x - this.start.x);
+			let r1 = this.start.x - user.x;
+			let r2 = this.start.y - user.y;
+			let d = Math.abs(-v2*r2-r1*v1)/Math.hypot(-v2, v1);
+			return d <= radius;
+		}
+	}
 
 	interface Point {
 		x: number; 
 		y: number;
-	}
-
-	interface Circle {
-		center: Point;
-		radius: number;
-		checked: boolean;
-	}
-
-	function isCircle(o: any): o is Circle {
-		return 'center' in o && 'radius' in o;
-	}
-
-	interface Line {
-		start: Point;
-		end: Point;
-		checked: boolean;
-	}
-
-	function isLine(o: any): o is Line {
-		return 'start' in o && 'end' in o;
 	}
 
 	const user = {
@@ -150,50 +204,36 @@
 		return [{x: xs1, y: ys1}, {x: xs2, y: ys2}];
 	}
 
-	function edges(p1: Point, p2: Point) : Line
-	{
+	function edges(p1: Point, p2: Point) : Line {
 		var a = (p1.y - p2.y) / (p1.x - p2.x);
 		if (isNaN(a)) { // horizontal line (initial state)
-			return {
-				start: {x: -cWidth, y: p1.y},
-				end: {x: cWidth, y: p1.y},
-				checked: true
-			}
+			return new Line({x: -cWidth, y: p1.y}, {x: cWidth, y: p1.y})
 		} else if (!Number.isFinite(a)) { // vertical line
-			return {
-				start: {x: p1.x, y: -cHeight},
-				end: {x: p1.x, y: cHeight},
-				checked: true
-			}
+			return new Line({x: p1.x, y: -cHeight}, {x: p1.x, y: cHeight});
 		}
 		var b = p1.y - a*p1.x;
 		var end = a*cWidth + b;
 		var start = a*-cWidth + b;
 
-		return {
-			start: {x: -cWidth, y: start},
-			end: {x: cWidth, y: end},
-			checked: true
-		}
-	};
+		return new Line({x: -cWidth, y: start}, {x: cWidth, y: end})
+	}
 
-	function pointInRange() : Maybe<Point>
-	{
-		let minDist = Infinity;
-		let minIntersection: Maybe<Point>;
+	function pointInRange() : Maybe<Point> {
 		for (let intersection of intersections) {
 			let distance = Math.hypot(user.x - intersection.x, user.y - intersection.y);
-			if (distance < minDist) {
-				minDist = distance;
-				minIntersection = intersection;
+			if (distance <= radius ) {
+				return intersection;
 			}
 		}
+	}
 
-		if (minIntersection !== null && minDist <= radius / viewPort.zoomFactor) {
-			return minIntersection;
-		} else {
-			return; 
+	function shapeInRange() : Maybe<Shape> {
+		for (let shape of shapes) {
+			if (shape.mouseInRange()) {
+				return shape;
+			}
 		}
+		return;
 	}
 
 	undoButton.addEventListener("click", function (e) {
@@ -295,7 +335,7 @@
 				if (minIntersection) {
 					nodeRadius = Math.hypot(p2.x - minIntersection.x, p2.y - minIntersection.y);
 				}
-				shapes.push({center: p2, radius: nodeRadius, checked: true});
+				shapes.push(new Circle(p2, nodeRadius));
 				createShapeText('circle', shapes);
 			}
 		}
@@ -305,39 +345,18 @@
 		for (let l1 = 0; l1 < shapes.length; l1++) {
 			for (let l2 = 0; l2 < l1; l2++) {
 				if (shapes[l1].checked && shapes[l2].checked) {
-					if (isLine(shapes[l1]) && isLine(shapes[l2])) {
+					if (shapes[l1] instanceof Line && shapes[l2] instanceof Line) {
 						intersections.push(intersect(<Line> shapes[l1], <Line> shapes[l2]));
-					} else if (isCircle(shapes[l1]) && isCircle(shapes[l2])) {
+					} else if (shapes[l1] instanceof Circle && shapes[l2] instanceof Circle) {
 						intersections.push(...circleIntersect(<Circle> shapes[l1], <Circle> shapes[l2]));
-					} else if (isCircle(shapes[l1]) && isLine(shapes[l2])) {
+					} else if (shapes[l1] instanceof Circle && shapes[l2] instanceof Line) {
 						intersections.push(...circleLineIntersect(<Circle> shapes[l1], <Line> shapes[l2])); 
-					} else if (isLine(shapes[l1]) && isCircle(shapes[l2])) {
+					} else if (shapes[l1] instanceof Line && shapes[l2] instanceof Circle) {
 						intersections.push(...circleLineIntersect(<Circle> shapes[l2], <Line> shapes[l1])); 
 					}
 				}
 			}
 		}
-	}
-
-	function drawCircle(circle: Circle) {
-		let x = circle.center.x * viewPort.zoomFactor + viewPort.offsetX;	
-		let y = circle.center.y * viewPort.zoomFactor + viewPort.offsetY
-		let radius = circle.radius * viewPort.zoomFactor;
-		ctx.beginPath();
-		ctx.arc(x, y, radius, 0, 2*Math.PI);
-		ctx.stroke();
-
-	}
-
-	function drawLine(line: Line) {
-		let startX = line.start.x * viewPort.zoomFactor + viewPort.offsetX;
-		let startY = line.start.y * viewPort.zoomFactor + viewPort.offsetY;
-		let endX = line.end.x * viewPort.zoomFactor + viewPort.offsetX;
-		let endY = line.end.y * viewPort.zoomFactor + viewPort.offsetY;
-		ctx.beginPath();
-		ctx.moveTo(startX, startY);
-		ctx.lineTo(endX, endY);
-		ctx.stroke();
 	}
 
 	function newShape() {
@@ -350,7 +369,7 @@
 			}
 
 			if (line !== null) {
-				drawLine(line);
+				line.draw();
 			}
 		} else if (user.drawType === 'circle') {
 			let node = nodes[0]
@@ -358,7 +377,8 @@
 			if (minIntersection) {
 				nodeRadius = Math.hypot(node.x - minIntersection.x, node.y - minIntersection.y);
 			}
-			drawCircle({center: {x: node.x, y: node.y}, radius: nodeRadius, checked: true});
+			let circle = new Circle({x: node.x, y: node.y}, nodeRadius);
+			circle.draw();
 
 		}
 	}
@@ -383,13 +403,15 @@
 			ctx.fill();
 		}
 
+		let closeShape = shapeInRange();
+
+		if (closeShape) {
+			closeShape.color = 'red';
+		}
+
 		for (let shape of shapes) {
 			if (shape.checked) {
-				if (isLine(shape)) {
-					drawLine(shape);
-				} else if (isCircle(shape)) {
-					drawCircle(shape);
-				}
+				shape.draw();
 			}
 		}
 		requestAnimationFrame(render);
