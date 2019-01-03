@@ -197,7 +197,11 @@
 	}
 
 	undoButton.addEventListener("click", function (e) {
-		shapes.pop();
+		if (shapeList.lastChild) {
+			shapes.pop();
+			shapeList.lastChild.remove();
+			update();
+		}
 	});
 
 	canvas.addEventListener("mousemove", function (e) {
