@@ -12,10 +12,12 @@
 		checked: boolean;
 		color: string;
 		intersections: Point[];
+		selected: boolean;
 		constructor() {
 			this.checked = true;
 			this.color = 'black';
 			this.intersections = [];
+			this.selected = false;
 		}
 		draw() {
 			throw new Error('abstract class shape for draw');
@@ -45,11 +47,17 @@
 			let x = this.center.x * viewPort.zoomFactor + viewPort.offsetX;	
 			let y = this.center.y * viewPort.zoomFactor + viewPort.offsetY
 			let radius = this.radius * viewPort.zoomFactor;
-			ctx.strokeStyle = this.color;
-			this.color = 'black';
+			if (this.selected) {
+				ctx.strokeStyle = 'red';
+				this.selected = false;
+				for (let intersection of this.intersections) {
+					drawPoint(intersection);
+				}
+			}
 			ctx.beginPath();
 			ctx.arc(x, y, radius, 0, 2*Math.PI);
 			ctx.stroke();
+			ctx.strokeStyle = 'black';
 		}
 
 		mouseInRange() {
@@ -106,12 +114,19 @@
 			let startY = this.start.y * viewPort.zoomFactor + viewPort.offsetY;
 			let endX = this.end.x * viewPort.zoomFactor + viewPort.offsetX;
 			let endY = this.end.y * viewPort.zoomFactor + viewPort.offsetY;
-			ctx.strokeStyle = this.color;
+			if (this.selected) {
+				ctx.strokeStyle = 'red';
+				this.selected = false;
+				for (let intersection of this.intersections) {
+					drawPoint(intersection);
+				}
+			}
 			this.color = 'black';
 			ctx.beginPath();
 			ctx.moveTo(startX, startY);
 			ctx.lineTo(endX, endY);
 			ctx.stroke();
+			ctx.strokeStyle = 'black';
 		}
 
 		// http://mathworld.wolfram.com/Point-LineDistance2-Dimensional.html 
@@ -365,18 +380,21 @@
 			}
 		}
 
-		for (let l1 = 0; l1 < shapes.length; l1++) {
-			shapes[l1].intersections = [];
-			for (let l2 = 0; l2 < l1; l2++) {
-				if (shapes[l1].checked && shapes[l2].checked) {
-					if (shapes[l2] instanceof Line) {
-						shapes[l1].intersectLine(<Line> shapes[l2]);
-					} else if (shapes[l2] instanceof Circle) {
-						shapes[l1].intersectCircle(<Circle> shapes[l2]);
+		for (let shape1 of shapes) {
+			shape1.intersections = [];
+			for (let shape2 of shapes){
+				if (shape1 !== shape2) {
+					if (shape1.checked && shape2.checked) {
+						if (shape2 instanceof Line) {
+							shape1.intersectLine(<Line> shape2);
+						} else if (shape2 instanceof Circle) {
+							shape1.intersectCircle(<Circle> shape2);
+						}
 					}
 				}
 			}
 		}
+		console.log(shapes);
 	}
 
 	function newShape() {
@@ -403,6 +421,14 @@
 		}
 	}
 
+	function drawPoint(point: Point) : void {
+			let x = point.x * viewPort.zoomFactor + viewPort.offsetX;
+			let y = point.y * viewPort.zoomFactor + viewPort.offsetY; 
+			ctx.beginPath();
+			ctx.arc(x, y, radius, 0, 2*Math.PI);
+			ctx.fill();
+	}
+
 	function render() {
 		if (nodes.length > 1) {
 			update();
@@ -416,17 +442,13 @@
 		let minIntersection = pointInRange();
 
 		if (minIntersection) {
-			let x = minIntersection.x * viewPort.zoomFactor + viewPort.offsetX;
-			let y = minIntersection.y * viewPort.zoomFactor + viewPort.offsetY; 
-			ctx.beginPath();
-			ctx.arc(x, y, radius, 0, 2*Math.PI);
-			ctx.fill();
+			drawPoint(minIntersection);
 		}
 
 		let closeShape = shapeInRange();
 
 		if (closeShape) {
-			closeShape.color = 'red';
+			closeShape.selected = true;
 		}
 
 		for (let shape of shapes) {
