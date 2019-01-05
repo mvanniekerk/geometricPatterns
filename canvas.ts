@@ -50,26 +50,9 @@
 			let radius = this.radius * viewPort.zoomFactor;
 			let start = 0;
 			let end = 2*Math.PI;
-			if (this.selected && !user.mouseDown) {
-				ctx.strokeStyle = 'red';
-				this.selected = false;
-				for (let intersection of this.intersections) {
-					drawPoint(intersection);
-				}
-				if (user.drawType === 'eraser' && this.redIntersectionPoints) {
-					start = this.redIntersectionPoints.lower;
-					end = this.redIntersectionPoints.higher;
-					ctx.strokeStyle = 'red';
-					ctx.beginPath();
-					ctx.arc(x, y, radius, start, end);
-					ctx.stroke();
-					ctx.strokeStyle = 'black';
-				}
-			} 
 			ctx.beginPath();
 			ctx.arc(x, y, radius, end, start);
 			ctx.stroke();
-			ctx.strokeStyle = 'black';
 		}
 
 		mouseInRange() {
@@ -207,7 +190,7 @@
 		// http://mathworld.wolfram.com/Point-LineDistance2-Dimensional.html 
 		mouseInRange() {
 			let d = this.pointLineDistance(this.start, this.end, user);
-			return this.inBetween(this.start, this.end, user) && d <= radius;
+			return inBetween(this.start, this.end, user) && d <= radius;
 		}
 
 		genSegments() : {start: Point, end: Point}[] {
@@ -245,17 +228,6 @@
 			}
 		}
 
-		inBetween(p1: Point, p2: Point, p3:Point) {
-			let d12 = Math.hypot(p1.x - p2.x, p1.y - p2.y);
-			let d23 = Math.hypot(p2.x - p3.x, p2.y - p3.y);
-			let d13 = Math.hypot(p1.x - p3.x, p1.y - p3.y);
-			let diff = d13 + d23 - d12;
-
-			let epsilon = 5;
-
-			return -epsilon < diff && epsilon > diff;
-		}
-
 		intersectLine(l2: Line) : void {
 			var {start: p1, end: p2} = this;
 			var {start: p3, end: p4} = l2;
@@ -268,13 +240,13 @@
 
 			if (!Number.isFinite(a1) && Number.isFinite(a2)) {
 				let result = {x: p1.x, y: p1.x*a2+b2};
-				if (this.inBetween(p1, p2, result) && this.inBetween(p3, p4, result)) {
+				if (inBetween(p1, p2, result) && inBetween(p3, p4, result)) {
 					this.intersections.push(result)
 				}
 				return;
 			} else if (Number.isFinite(a1) && !Number.isFinite(a2)) {
 				let result = {x: p3.x, y: p3.x*a1+b1};
-				if (this.inBetween(p1, p2, result) && this.inBetween(p3, p4, result)) {
+				if (inBetween(p1, p2, result) && inBetween(p3, p4, result)) {
 					this.intersections.push(result);
 				}
 				return;
@@ -287,7 +259,7 @@
 			var y = a2*x + b2;
 			let result = {x, y};
 
-			if (this.inBetween(p1, p2, result) && this.inBetween(p3, p4, result)) {
+			if (inBetween(p1, p2, result) && inBetween(p3, p4, result)) {
 				this.intersections.push({x, y});
 			}
 
@@ -336,6 +308,17 @@
 	const cWidth = 10000;
 	const cHeight = 10000;
 
+	function inBetween(p1: Point, p2: Point, p3:Point) {
+		let d12 = Math.hypot(p1.x - p2.x, p1.y - p2.y);
+		let d23 = Math.hypot(p2.x - p3.x, p2.y - p3.y);
+		let d13 = Math.hypot(p1.x - p3.x, p1.y - p3.y);
+		let diff = d13 + d23 - d12;
+
+		let epsilon = 5;
+
+		return -epsilon < diff && epsilon > diff;
+	}
+
 	// http://mathworld.wolfram.com/Circle-LineIntersection.html 
 	function circleLineIntersect(circle: Circle, line: Line) : Point[]
 	{
@@ -364,6 +347,10 @@
 		
 		let xi2 = (D*dy - sgn(dy)*dx*Math.sqrt(discr)) / (dr*dr) + circle.center.x;
 		let yi2 = (-D*dx - Math.abs(dy)*Math.sqrt(discr)) / (dr*dr) + circle.center.y;
+
+		if (!inBetween(line.start, line.end, {x: xi1, y: yi1}) || !inBetween(line.start, line.end, {x: xi2, y: yi2})) {
+			return [];
+		}
 
 		return [{x: xi1, y: yi1}, {x: xi2, y: yi2}]
 	}
@@ -451,6 +438,7 @@
 			let shape = shapeInRange();
 			if (shape) {
 				shape.removeSegment(shapes);
+				update();
 			}
 			return;
 		}
@@ -467,6 +455,7 @@
 	});
 
 	canvas.addEventListener("wheel", function (e) {
+		e.preventDefault();
 		let delta = viewPort.zoomFactor * e.deltaY / 100;
 		let zoomFactor = viewPort.zoomFactor + delta;
 		if (zoomFactor >= 20 || zoomFactor <= 0.05) {
