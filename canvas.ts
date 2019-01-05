@@ -180,8 +180,12 @@
 		removeSegment(shapes: Shape[]) : void {
 			this.closestIntersectionPoints();
 			if (this.eraserSegment) {
-				shapes.push(new Line(this.start, this.eraserSegment.start));
-				shapes.push(new Line(this.eraserSegment.end, this.end));
+				if (this.start != this.eraserSegment.start) {
+					shapes.push(new Line(this.start, this.eraserSegment.start));
+				}
+				if (this.end != this.eraserSegment.end) {
+					shapes.push(new Line(this.eraserSegment.end, this.end));
+				}
 				for (let i=0; i<shapes.length; i++) {
 					if (shapes[i] == this) {
 						shapes.splice(i, 1);
@@ -203,7 +207,7 @@
 		// http://mathworld.wolfram.com/Point-LineDistance2-Dimensional.html 
 		mouseInRange() {
 			let d = this.pointLineDistance(this.start, this.end, user);
-			return d <= radius;
+			return this.inBetween(this.start, this.end, user) && d <= radius;
 		}
 
 		genSegments() : {start: Point, end: Point}[] {
@@ -228,25 +232,33 @@
 
 		closestIntersectionPoints() : void {
 			let lineSegments = this.genSegments();
-			if (lineSegments) {
-				for (let lineSegment of lineSegments) {
-					let start = lineSegment.start;
-					let end = lineSegment.end;
-					let startDist = Math.hypot(start.x - user.x, start.y - user.y);
-					let endDist = Math.hypot(end.x - user.x, end.y - user.y);
-					let dist = Math.hypot(start.x - end.x, start.y - end.y);
-					if (startDist < dist && endDist < dist) {
-						this.eraserSegment = lineSegment;
-						return;
-					}
+			for (let lineSegment of lineSegments) {
+				let start = lineSegment.start;
+				let end = lineSegment.end;
+				let startDist = Math.hypot(start.x - user.x, start.y - user.y);
+				let endDist = Math.hypot(end.x - user.x, end.y - user.y);
+				let dist = Math.hypot(start.x - end.x, start.y - end.y);
+				if (startDist < dist && endDist < dist) {
+					this.eraserSegment = lineSegment;
+					return;
 				}
 			}
 		}
 
+		inBetween(p1: Point, p2: Point, p3:Point) {
+			let d12 = Math.hypot(p1.x - p2.x, p1.y - p2.y);
+			let d23 = Math.hypot(p2.x - p3.x, p2.y - p3.y);
+			let d13 = Math.hypot(p1.x - p3.x, p1.y - p3.y);
+			let diff = d13 + d23 - d12;
+
+			let epsilon = 5;
+
+			return -epsilon < diff && epsilon > diff;
+		}
+
 		intersectLine(l2: Line) : void {
-			let l1 = this;
-			var {start: p1, end: p2} = l1
-			var {start: p3, end: p4} = l2
+			var {start: p1, end: p2} = this;
+			var {start: p3, end: p4} = l2;
 
 			var a1 = (p1.y - p2.y) / (p1.x - p2.x);
 			var a2 = (p3.y - p4.y) / (p3.x - p4.x);
@@ -255,10 +267,16 @@
 			var b2 = p3.y - a2*p3.x;
 
 			if (!Number.isFinite(a1) && Number.isFinite(a2)) {
-				this.intersections.push({x: p1.x, y: p1.x*a2+b2});
+				let result = {x: p1.x, y: p1.x*a2+b2};
+				if (this.inBetween(p1, p2, result) && this.inBetween(p3, p4, result)) {
+					this.intersections.push(result)
+				}
 				return;
 			} else if (Number.isFinite(a1) && !Number.isFinite(a2)) {
-				this.intersections.push({x: p3.x, y: p3.x*a1+b1});
+				let result = {x: p3.x, y: p3.x*a1+b1};
+				if (this.inBetween(p1, p2, result) && this.inBetween(p3, p4, result)) {
+					this.intersections.push(result);
+				}
 				return;
 			} else if (!Number.isFinite(a1) && !Number.isFinite(a2)) {
 				console.log('both lines are vertical');
@@ -267,8 +285,12 @@
 
 			var x = (b2 - b1)/(a1 - a2);
 			var y = a2*x + b2;
+			let result = {x, y};
 
-			this.intersections.push({x, y});
+			if (this.inBetween(p1, p2, result) && this.inBetween(p3, p4, result)) {
+				this.intersections.push({x, y});
+			}
+
 		}
 
 		intersectCircle(circle: Circle) : void {
