@@ -10,12 +10,10 @@
 
 	class Shape {
 		checked: boolean;
-		color: string;
 		intersections: Point[];
 		selected: boolean;
 		constructor() {
 			this.checked = true;
-			this.color = 'black';
 			this.intersections = [];
 			this.selected = false;
 		}
@@ -31,12 +29,16 @@
 		intersectCircle(circle: Circle) : void {
 			throw new Error('abstract class shape for intersect circle');
 		}
+		closestIntersectionPoints() {
+			throw new Error('abstract class shape for closest intersection points');
+		}
 	}
 	
 
 	class Circle extends Shape {
 		center: Point;
 		radius: number;
+		redIntersectionPoints?: {lower: number, higher: number};
 		constructor(center : Point, radius : number) {
 			super();
 			this.center = center;
@@ -47,15 +49,26 @@
 			let x = this.center.x * viewPort.zoomFactor + viewPort.offsetX;	
 			let y = this.center.y * viewPort.zoomFactor + viewPort.offsetY
 			let radius = this.radius * viewPort.zoomFactor;
-			if (this.selected) {
+			let start = 0;
+			let end = 2*Math.PI;
+			if (this.selected && !user.mouseDown) {
 				ctx.strokeStyle = 'red';
 				this.selected = false;
 				for (let intersection of this.intersections) {
 					drawPoint(intersection);
 				}
-			}
+				if (user.drawType === 'eraser' && this.redIntersectionPoints) {
+					start = this.redIntersectionPoints.lower;
+					end = this.redIntersectionPoints.higher;
+					ctx.strokeStyle = 'red';
+					ctx.beginPath();
+					ctx.arc(x, y, radius, start, end);
+					ctx.stroke();
+					ctx.strokeStyle = 'black';
+				}
+			} 
 			ctx.beginPath();
-			ctx.arc(x, y, radius, 0, 2*Math.PI);
+			ctx.arc(x, y, radius, end, start);
 			ctx.stroke();
 			ctx.strokeStyle = 'black';
 		}
@@ -64,6 +77,43 @@
 			let fromCenter = Math.hypot(this.center.x - user.x, this.center.y - user.y);
 			let distance = Math.abs(fromCenter - this.radius);
 			return distance <= radius
+		}
+
+		closestIntersectionPoints() {
+			let mod = (n:number) => ((n % (Math.PI * 2)) + (Math.PI*2)) % (Math.PI*2);
+			let angle = Math.atan2(user.y - this.center.y, user.x - this.center.x);
+			let lower = -Math.PI;
+			let lowerDiff = -Math.PI;
+			let higherDiff = Math.PI;
+			let higher = Math.PI;
+			for (let intersection of this.intersections) {
+				let intAngle = Math.atan2(intersection.y - this.center.y, intersection.x - this.center.x);
+				let diff = intAngle - angle;
+				if (angle > 0 && intAngle < 0 && Math.abs(diff) > Math.PI) {
+					diff = intAngle + 2*Math.PI - angle;
+				} else if (angle < 0 && intAngle > 0 && Math.abs(diff) > Math.PI) {
+					diff = intAngle - (angle + 2*Math.PI);
+				}
+				console.log(intAngle, diff);
+				if (diff > lowerDiff && diff < 0) {
+					lowerDiff = diff;
+					lower = intAngle;
+				} 
+				if (diff < higherDiff && diff > 0) {
+					higherDiff = diff;
+					higher = intAngle;
+				}
+			}
+			console.log(angle, lower, lowerDiff, higher, higherDiff);
+			this.redIntersectionPoints = {lower, higher};
+		}
+
+		drawShapeSegment(points: {lower: number, higher: number}) {
+			ctx.strokeStyle = 'red';
+			ctx.beginPath();
+			ctx.arc(this.center.x, this.center.y, this.radius, points.lower, points.higher);
+			ctx.stroke();
+			ctx.strokeStyle = 'black';
 		}
 
 		intersectLine(line : Line) : void{
@@ -114,14 +164,13 @@
 			let startY = this.start.y * viewPort.zoomFactor + viewPort.offsetY;
 			let endX = this.end.x * viewPort.zoomFactor + viewPort.offsetX;
 			let endY = this.end.y * viewPort.zoomFactor + viewPort.offsetY;
-			if (this.selected) {
+			if (this.selected && !user.mouseDown) {
 				ctx.strokeStyle = 'red';
 				this.selected = false;
 				for (let intersection of this.intersections) {
 					drawPoint(intersection);
 				}
 			}
-			this.color = 'black';
 			ctx.beginPath();
 			ctx.moveTo(startX, startY);
 			ctx.lineTo(endX, endY);
@@ -449,6 +498,9 @@
 
 		if (closeShape) {
 			closeShape.selected = true;
+			if (user.drawType === 'eraser') {
+				closeShape.closestIntersectionPoints();
+			} 
 		}
 
 		for (let shape of shapes) {
