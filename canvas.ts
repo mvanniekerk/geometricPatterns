@@ -80,32 +80,7 @@
 		}
 
 		closestIntersectionPoints() {
-			let mod = (n:number) => ((n % (Math.PI * 2)) + (Math.PI*2)) % (Math.PI*2);
-			let angle = Math.atan2(user.y - this.center.y, user.x - this.center.x);
-			let lower = -Math.PI;
-			let lowerDiff = -Math.PI;
-			let higherDiff = Math.PI;
-			let higher = Math.PI;
-			for (let intersection of this.intersections) {
-				let intAngle = Math.atan2(intersection.y - this.center.y, intersection.x - this.center.x);
-				let diff = intAngle - angle;
-				if (angle > 0 && intAngle < 0 && Math.abs(diff) > Math.PI) {
-					diff = intAngle + 2*Math.PI - angle;
-				} else if (angle < 0 && intAngle > 0 && Math.abs(diff) > Math.PI) {
-					diff = intAngle - (angle + 2*Math.PI);
-				}
-				console.log(intAngle, diff);
-				if (diff > lowerDiff && diff < 0) {
-					lowerDiff = diff;
-					lower = intAngle;
-				} 
-				if (diff < higherDiff && diff > 0) {
-					higherDiff = diff;
-					higher = intAngle;
-				}
-			}
-			console.log(angle, lower, lowerDiff, higher, higherDiff);
-			this.redIntersectionPoints = {lower, higher};
+
 		}
 
 		drawShapeSegment(points: {lower: number, higher: number}) {
@@ -153,6 +128,7 @@
 	class Line extends Shape {
 		start: Point;
 		end: Point;
+		lineSegments?: {start: Point, end: Point, hidden: boolean}[];
 		constructor(start: Point, end: Point) {
 			super();
 			this.start = start;
@@ -160,32 +136,82 @@
 		}
 
 		draw() {
-			let startX = this.start.x * viewPort.zoomFactor + viewPort.offsetX;
-			let startY = this.start.y * viewPort.zoomFactor + viewPort.offsetY;
-			let endX = this.end.x * viewPort.zoomFactor + viewPort.offsetX;
-			let endY = this.end.y * viewPort.zoomFactor + viewPort.offsetY;
-			if (this.selected && !user.mouseDown) {
-				ctx.strokeStyle = 'red';
-				this.selected = false;
-				for (let intersection of this.intersections) {
-					drawPoint(intersection);
+			if (this.lineSegments) {
+				for (let lineSegment of this.lineSegments) {
+					if (lineSegment.hidden) {
+						ctx.strokeStyle = 'red';
+					}
+					let startX = lineSegment.start.x * viewPort.zoomFactor + viewPort.offsetX;
+					let startY = lineSegment.start.y * viewPort.zoomFactor + viewPort.offsetY;
+					let endX = lineSegment.end.x * viewPort.zoomFactor + viewPort.offsetX;
+					let endY = lineSegment.end.y * viewPort.zoomFactor + viewPort.offsetY;
+					ctx.beginPath();
+					ctx.moveTo(startX, startY);
+					ctx.lineTo(endX, endY);
+					ctx.stroke();
+					ctx.strokeStyle = 'black';
 				}
+			} else {
+				let startX = this.start.x * viewPort.zoomFactor + viewPort.offsetX;
+				let startY = this.start.y * viewPort.zoomFactor + viewPort.offsetY;
+				let endX = this.end.x * viewPort.zoomFactor + viewPort.offsetX;
+				let endY = this.end.y * viewPort.zoomFactor + viewPort.offsetY;
+				ctx.beginPath();
+				ctx.moveTo(startX, startY);
+				ctx.lineTo(endX, endY);
+				ctx.stroke();
+				ctx.strokeStyle = 'black';
 			}
-			ctx.beginPath();
-			ctx.moveTo(startX, startY);
-			ctx.lineTo(endX, endY);
-			ctx.stroke();
-			ctx.strokeStyle = 'black';
+		}
+
+		pointLineDistance(start: Point, end: Point, point: Point) : number {
+			let v1 = end.y - start.y;
+			let v2 = -(end.x - start.x);
+			let r1 = start.x - point.x;
+			let r2 = start.y - point.y;
+			return Math.abs(-v2*r2-r1*v1)/Math.hypot(-v2, v1);
 		}
 
 		// http://mathworld.wolfram.com/Point-LineDistance2-Dimensional.html 
 		mouseInRange() {
-			let v1 = this.end.y - this.start.y;
-			let v2 = -(this.end.x - this.start.x);
-			let r1 = this.start.x - user.x;
-			let r2 = this.start.y - user.y;
-			let d = Math.abs(-v2*r2-r1*v1)/Math.hypot(-v2, v1);
+			let d = this.pointLineDistance(this.start, this.end, user);
 			return d <= radius;
+		}
+
+		genLineSegments() : void {
+			let points = this.intersections.slice(0, this.intersections.length);
+			points.push(this.start);
+			points.push(this.end);
+			points.sort((a,b) => {
+				if (a.x == b.x) {
+					return a.y - b.y;
+				} else {
+					return a.x - b.x;
+				}
+			});
+			this.lineSegments = [];
+			for (let i = 1; i<points.length;i++) {
+				let start = points[i-1];
+				let end = points[i];
+				this.lineSegments.push({start, end, hidden: false});
+			}
+		}
+
+		closestIntersectionPoints() : void {
+			this.genLineSegments();
+			if (this.lineSegments) {
+				for (let lineSegment of this.lineSegments) {
+					let start = lineSegment.start;
+					let end = lineSegment.end;
+					let startDist = Math.hypot(start.x - user.x, start.y - user.y);
+					let endDist = Math.hypot(end.x - user.x, end.y - user.y);
+					let dist = Math.hypot(start.x - end.x, start.y - end.y);
+					if (startDist < dist && endDist < dist) {
+						lineSegment.hidden = true;
+						return;
+					}
+				}
+			}
 		}
 
 		intersectLine(l2: Line) : void {
