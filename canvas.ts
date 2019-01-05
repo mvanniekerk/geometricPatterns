@@ -32,6 +32,9 @@
 		closestIntersectionPoints() {
 			throw new Error('abstract class shape for closest intersection points');
 		}
+		genSegments() : void {
+		}
+		removeSegment() : void {}
 	}
 	
 
@@ -129,6 +132,7 @@
 		start: Point;
 		end: Point;
 		lineSegments?: {start: Point, end: Point, hidden: boolean}[];
+		eraserSegment?: {start: Point, end: Point, hidden: boolean};
 		constructor(start: Point, end: Point) {
 			super();
 			this.start = start;
@@ -138,18 +142,24 @@
 		draw() {
 			if (this.lineSegments) {
 				for (let lineSegment of this.lineSegments) {
-					if (lineSegment.hidden) {
-						ctx.strokeStyle = 'red';
+					if (!lineSegment.hidden || this.eraserSegment == lineSegment) {
+						if (this.eraserSegment == lineSegment) {
+							ctx.strokeStyle = 'red';
+						}
+						let startX = lineSegment.start.x * viewPort.zoomFactor + viewPort.offsetX;
+						let startY = lineSegment.start.y * viewPort.zoomFactor + viewPort.offsetY;
+						let endX = lineSegment.end.x * viewPort.zoomFactor + viewPort.offsetX;
+						let endY = lineSegment.end.y * viewPort.zoomFactor + viewPort.offsetY;
+						ctx.beginPath();
+						ctx.moveTo(startX, startY);
+						ctx.lineTo(endX, endY);
+						ctx.stroke();
+						ctx.strokeStyle = 'black';
 					}
-					let startX = lineSegment.start.x * viewPort.zoomFactor + viewPort.offsetX;
-					let startY = lineSegment.start.y * viewPort.zoomFactor + viewPort.offsetY;
-					let endX = lineSegment.end.x * viewPort.zoomFactor + viewPort.offsetX;
-					let endY = lineSegment.end.y * viewPort.zoomFactor + viewPort.offsetY;
-					ctx.beginPath();
-					ctx.moveTo(startX, startY);
-					ctx.lineTo(endX, endY);
-					ctx.stroke();
-					ctx.strokeStyle = 'black';
+				}
+				if (this.eraserSegment) {
+					this.eraserSegment.hidden = false;
+					this.eraserSegment = undefined;
 				}
 			} else {
 				let startX = this.start.x * viewPort.zoomFactor + viewPort.offsetX;
@@ -161,6 +171,13 @@
 				ctx.lineTo(endX, endY);
 				ctx.stroke();
 				ctx.strokeStyle = 'black';
+			}
+		}
+
+		removeSegment() {
+			this.closestIntersectionPoints();
+			if (this.eraserSegment) {
+				this.eraserSegment = undefined;
 			}
 		}
 
@@ -178,7 +195,7 @@
 			return d <= radius;
 		}
 
-		genLineSegments() : void {
+		genSegments() : void {
 			let points = this.intersections.slice(0, this.intersections.length);
 			points.push(this.start);
 			points.push(this.end);
@@ -198,7 +215,6 @@
 		}
 
 		closestIntersectionPoints() : void {
-			this.genLineSegments();
 			if (this.lineSegments) {
 				for (let lineSegment of this.lineSegments) {
 					let start = lineSegment.start;
@@ -207,7 +223,11 @@
 					let endDist = Math.hypot(end.x - user.x, end.y - user.y);
 					let dist = Math.hypot(start.x - end.x, start.y - end.y);
 					if (startDist < dist && endDist < dist) {
+						if (lineSegment.hidden) {
+							return;
+						}
 						lineSegment.hidden = true;
+						this.eraserSegment = lineSegment;
 						return;
 					}
 				}
@@ -374,7 +394,7 @@
 	});
 
 	canvas.addEventListener("mousedown", function (e) {
-		if (e.button == 2) { // right mouse button
+		if (e.button == 2 || user.drawType == 'eraser') { // right mouse button
 			return;
 		}
 
@@ -394,11 +414,25 @@
 	});
 
 	canvas.addEventListener("mouseup", function (e) {
-		if (e.button == 2) { // right mouse button
+		if (e.button == 2 ) { // right mouse button
+			return;
+		} else if (user.drawType == 'eraser') {
+			let shape = shapeInRange();
+			console.log(shape);
+			if (shape) {
+				shape.removeSegment();
+			}
 			return;
 		}
 
-		nodes.push({x: user.x, y: user.y});
+		let minIntersection = pointInRange();
+
+		if (minIntersection) {
+			nodes.push(minIntersection);
+		} else {
+			nodes.push({x: user.x, y: user.y});
+		}
+
 		user.mouseDown = false;
 	});
 
@@ -468,6 +502,7 @@
 					}
 				}
 			}
+			shape1.genSegments();
 		}
 		console.log(shapes);
 	}
