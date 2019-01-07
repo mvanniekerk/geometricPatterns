@@ -31,6 +31,7 @@
 		}
 		closestIntersectionPoints() : void {}
 		removeSegment(shapes: Shape[]) : void {}
+		genSegments() {};
 	}
 	
 
@@ -107,6 +108,7 @@
 		start: Point;
 		end: Point;
 		eraserSegment?: {start: Point, end: Point};
+		segments?: {start: Point, end: Point}[];
 		constructor(start: Point, end: Point) {
 			super();
 			this.start = start;
@@ -163,10 +165,10 @@
 		removeSegment(shapes: Shape[]) : void {
 			this.closestIntersectionPoints();
 			if (this.eraserSegment) {
-				if (this.start != this.eraserSegment.start) {
+				if (this.start.x != this.eraserSegment.start.x || this.start.y != this.eraserSegment.start.y) {
 					shapes.push(new Line(this.start, this.eraserSegment.start));
 				}
-				if (this.end != this.eraserSegment.end) {
+				if (this.end.x != this.eraserSegment.end.x || this.end.y != this.eraserSegment.end.y) {
 					shapes.push(new Line(this.eraserSegment.end, this.end));
 				}
 				for (let i=0; i<shapes.length; i++) {
@@ -210,6 +212,7 @@
 				let end = points[i];
 				newSegments.push({start, end});
 			}
+			this.segments = newSegments;
 			return newSegments;
 		}
 
@@ -238,20 +241,19 @@
 			var b1 = p1.y - a1*p1.x;
 			var b2 = p3.y - a2*p3.x;
 
-			if (!Number.isFinite(a1) && Number.isFinite(a2)) {
+			if (Math.abs(a1) > 1 << 28 && Math.abs(a2) < 1 << 28) {
 				let result = {x: p1.x, y: p1.x*a2+b2};
 				if (inBetween(p1, p2, result) && inBetween(p3, p4, result)) {
 					this.intersections.push(result)
 				}
 				return;
-			} else if (Number.isFinite(a1) && !Number.isFinite(a2)) {
+			} else if (Math.abs(a1) < 1 << 28 && Math.abs(a2) > 1 << 28) {
 				let result = {x: p3.x, y: p3.x*a1+b1};
 				if (inBetween(p1, p2, result) && inBetween(p3, p4, result)) {
 					this.intersections.push(result);
 				}
 				return;
-			} else if (!Number.isFinite(a1) && !Number.isFinite(a2)) {
-				console.log('both lines are vertical');
+			} else if (Math.abs(a1) > 1 << 28 && Math.abs(a2) > 1 << 28) {
 				return;
 			}
 
@@ -359,9 +361,10 @@
 	function edges(p1: Point, p2: Point) : Line {
 		var a = (p1.y - p2.y) / (p1.x - p2.x);
 		if (isNaN(a)) { // horizontal line (initial state)
-			return new Line({x: -cWidth, y: p1.y}, {x: cWidth, y: p1.y})
-		} else if (!Number.isFinite(a)) { // vertical line
-			return new Line({x: p1.x, y: -cHeight}, {x: p1.x, y: cHeight});
+			return new Line({x: -cWidth, y: p1.y}, {x: cWidth, y: p1.y});
+		} else if (Math.abs(a) > 1 << 28) { // vertical line
+			let result = new Line({x: p1.x, y: -cHeight}, {x: p1.x, y: cHeight});
+			return result;
 		}
 		var b = p1.y - a*p1.x;
 		var end = a*cWidth + b;
@@ -492,9 +495,11 @@
 			let minIntersection = pointInRange();
 
 			if (user.drawType === 'line') {
-				let line = edges(p1, p2);
+				let line;
 				if (minIntersection) {
 					line = edges(p2, minIntersection);
+				} else {
+					line = edges(p1, p2);
 				}
 				shapes.push(line);
 				createShapeText('line', shapes);
@@ -521,6 +526,10 @@
 					}
 				}
 			}
+			if (shape1.intersections.length == 0 && shape1.checked) {
+				console.log('no intersections', shape1);
+			}
+			shape1.genSegments();
 		}
 		console.log(shapes);
 	}
