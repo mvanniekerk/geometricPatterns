@@ -48,8 +48,8 @@
 		}
 
 		draw() {
-			let x = this.center.x * viewPort.zoomFactor + viewPort.offsetX;	
-			let y = this.center.y * viewPort.zoomFactor + viewPort.offsetY
+			let x = viewPort.findX(this.center.x);
+			let y = viewPort.findY(this.center.y);
 			let radius = this.radius * viewPort.zoomFactor;
 			let start = 0;
 			let end = 2*Math.PI;
@@ -122,30 +122,30 @@
 			if (this.eraserSegment) {
 				let lineSegment = this.eraserSegment;
 
-				let startX = this.start.x * viewPort.zoomFactor + viewPort.offsetX;
-				let startY = this.start.y * viewPort.zoomFactor + viewPort.offsetY;
-				let endX = lineSegment.start.x * viewPort.zoomFactor + viewPort.offsetX;
-				let endY = lineSegment.start.y * viewPort.zoomFactor + viewPort.offsetY;
+				let startX = viewPort.findX(this.start.x); 
+				let startY = viewPort.findY(this.start.y);
+				let endX = viewPort.findX(lineSegment.start.x);
+				let endY = viewPort.findY(lineSegment.start.y);
 				ctx.beginPath();
 				ctx.moveTo(startX, startY);
 				ctx.lineTo(endX, endY);
 				ctx.stroke();
 
 				ctx.strokeStyle = 'red';
-				startX = lineSegment.start.x * viewPort.zoomFactor + viewPort.offsetX;
-				startY = lineSegment.start.y * viewPort.zoomFactor + viewPort.offsetY;
-				endX = lineSegment.end.x * viewPort.zoomFactor + viewPort.offsetX;
-				endY = lineSegment.end.y * viewPort.zoomFactor + viewPort.offsetY;
+				startX = viewPort.findX(lineSegment.start.x);
+				startY = viewPort.findY(lineSegment.start.y);
+				endX = viewPort.findX(lineSegment.end.x);
+				endY = viewPort.findY(lineSegment.end.y);
 				ctx.beginPath();
 				ctx.moveTo(startX, startY);
 				ctx.lineTo(endX, endY);
 				ctx.stroke();
 
 				ctx.strokeStyle = 'black';
-				startX = lineSegment.end.x * viewPort.zoomFactor + viewPort.offsetX;
-				startY = lineSegment.end.y * viewPort.zoomFactor + viewPort.offsetY;
-				endX = this.end.x * viewPort.zoomFactor + viewPort.offsetX;
-				endY = this.end.y * viewPort.zoomFactor + viewPort.offsetY;
+				startX = viewPort.findX(lineSegment.end.x);
+				startY = viewPort.findY(lineSegment.end.y);
+				endX = viewPort.findX(this.end.x);
+				endY = viewPort.findY(this.end.y);
 				ctx.beginPath();
 				ctx.moveTo(startX, startY);
 				ctx.lineTo(endX, endY);
@@ -154,10 +154,10 @@
 				this.eraserSegment = undefined;
 			} else {
 				ctx.strokeStyle = this.color;
-				let startX = this.start.x * viewPort.zoomFactor + viewPort.offsetX;
-				let startY = this.start.y * viewPort.zoomFactor + viewPort.offsetY;
-				let endX = this.end.x * viewPort.zoomFactor + viewPort.offsetX;
-				let endY = this.end.y * viewPort.zoomFactor + viewPort.offsetY;
+				let startX = viewPort.findX(this.start.x); 
+				let startY = viewPort.findY(this.start.y);
+				let endX = viewPort.findX(this.end.x);
+				let endY = viewPort.findY(this.end.y);
 				ctx.beginPath();
 				ctx.moveTo(startX, startY);
 				ctx.lineTo(endX, endY);
@@ -293,7 +293,13 @@
 		offsetX: 0,
 		offsetY: 0,
 		lastX: 0,
-		lastY: 0
+		lastY: 0,
+		findX: function (x: number) {
+			return x * this.zoomFactor + this.offsetX
+		},
+		findY: function (y: number) {
+			return y * this.zoomFactor + this.offsetY
+		}
 	}
 
 
@@ -582,8 +588,8 @@
 	}
 
 	function drawPoint(point: Point) : void {
-			let x = point.x * viewPort.zoomFactor + viewPort.offsetX;
-			let y = point.y * viewPort.zoomFactor + viewPort.offsetY; 
+			let x = viewPort.findX(point.x);
+			let y = viewPort.findY(point.y);
 			ctx.beginPath();
 			ctx.arc(x, y, radius, 0, 2*Math.PI);
 			ctx.fill();
