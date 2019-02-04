@@ -355,17 +355,23 @@
 
 		let xi1 = (D*dy + sgn(dy)*dx*Math.sqrt(discr)) / (dr*dr) + circle.center.x;
 		let yi1 = (-D*dx + Math.abs(dy)*Math.sqrt(discr)) / (dr*dr) + circle.center.y;
+		let p1 = {x: xi1, y: yi1};
 		
 		let xi2 = (D*dy - sgn(dy)*dx*Math.sqrt(discr)) / (dr*dr) + circle.center.x;
 		let yi2 = (-D*dx - Math.abs(dy)*Math.sqrt(discr)) / (dr*dr) + circle.center.y;
+		let p2 = {x: xi2, y: yi2};
 
-		// TODO: handle line starting inside a circle
+		let result = [];
 
-		if (!inBetween(line.start, line.end, {x: xi1, y: yi1}) || !inBetween(line.start, line.end, {x: xi2, y: yi2})) {
-			return [];
+		if (inBetween(line.start, line.end, p1)) {
+			result.push(p1);
 		}
 
-		return [{x: xi1, y: yi1}, {x: xi2, y: yi2}]
+		if (inBetween(line.start, line.end, p2)) {
+			result.push(p2);
+		}
+
+		return result;
 	}
 
 
