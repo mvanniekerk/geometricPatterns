@@ -12,10 +12,12 @@
 		checked: boolean;
 		intersections: Point[];
 		selected: boolean;
+		color: string;
 		constructor() {
 			this.checked = true;
 			this.intersections = [];
 			this.selected = false;
+			this.color = 'black';
 		}
 		draw() {
 			throw new Error('abstract class shape for draw');
@@ -51,6 +53,7 @@
 			let radius = this.radius * viewPort.zoomFactor;
 			let start = 0;
 			let end = 2*Math.PI;
+			ctx.strokeStyle = this.color;
 			ctx.beginPath();
 			ctx.arc(x, y, radius, end, start);
 			ctx.stroke();
@@ -150,6 +153,7 @@
 
 				this.eraserSegment = undefined;
 			} else {
+				ctx.strokeStyle = this.color;
 				let startX = this.start.x * viewPort.zoomFactor + viewPort.offsetX;
 				let startY = this.start.y * viewPort.zoomFactor + viewPort.offsetY;
 				let endX = this.end.x * viewPort.zoomFactor + viewPort.offsetX;
@@ -158,7 +162,6 @@
 				ctx.moveTo(startX, startY);
 				ctx.lineTo(endX, endY);
 				ctx.stroke();
-				ctx.strokeStyle = 'black';
 			}
 		}
 
@@ -175,9 +178,9 @@
 					if (shapes[i] == this) {
 						shapes.splice(i, 1);
 						console.log(shapes);
-						return;
 					}
 				}
+				createShapeTexts(shapes);
 			}
 		}
 
@@ -350,6 +353,8 @@
 		let xi2 = (D*dy - sgn(dy)*dx*Math.sqrt(discr)) / (dr*dr) + circle.center.x;
 		let yi2 = (-D*dx - Math.abs(dy)*Math.sqrt(discr)) / (dr*dr) + circle.center.y;
 
+		// TODO: handle line starting inside a circle
+
 		if (!inBetween(line.start, line.end, {x: xi1, y: yi1}) || !inBetween(line.start, line.end, {x: xi2, y: yi2})) {
 			return [];
 		}
@@ -469,10 +474,15 @@
 		viewPort.offsetY -= canvas.height / 2 * delta;
 	});
 
-	function createShapeText(name: String, shapes: Shape[]) {
-		let id = shapes.length - 1;
+	function createShapeText(name: String, id: number, shapes: Shape[]) {
 		let newEl = document.createElement("li");
 		let text = document.createTextNode(name + " " + id);
+		newEl.onmouseenter = function () {
+			shapes[id].color = 'red';
+		}
+		newEl.onmouseleave = function () {
+			shapes[id].color = 'black';
+		}
 
 		var checkbox = document.createElement('input');
 		checkbox.type = "checkbox";
@@ -485,6 +495,19 @@
 		newEl.appendChild(text);
 		newEl.appendChild(checkbox);
 		shapeList.appendChild(newEl);
+	}
+
+	function createShapeTexts(shapes: Shape[]) {
+		while (shapeList.lastChild) {
+			shapeList.removeChild(shapeList.lastChild);
+		}
+		for (let i = 0; i < shapes.length; i++) {
+			if (shapes[i] instanceof Circle) {
+				createShapeText('circle', i, shapes);
+			} else if (shapes[i] instanceof Line) {
+				createShapeText('line', i, shapes);
+			}
+		}
 	}
 
 	function update() {
@@ -502,14 +525,14 @@
 					line = edges(p1, p2);
 				}
 				shapes.push(line);
-				createShapeText('line', shapes);
+				createShapeText('line', shapes.length - 1, shapes);
 			} else if (user.drawType === 'circle') {
 				let nodeRadius = Math.hypot(p1.x - p2.x, p1.y - p2.y);
 				if (minIntersection) {
 					nodeRadius = Math.hypot(p2.x - minIntersection.x, p2.y - minIntersection.y);
 				}
 				shapes.push(new Circle(p2, nodeRadius));
-				createShapeText('circle', shapes);
+				createShapeText('circle', shapes.length - 1, shapes);
 			}
 		}
 
