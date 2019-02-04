@@ -53,8 +53,8 @@ var __extends = (this && this.__extends) || (function () {
             return _this;
         }
         Circle.prototype.draw = function () {
-            var x = this.center.x * viewPort.zoomFactor + viewPort.offsetX;
-            var y = this.center.y * viewPort.zoomFactor + viewPort.offsetY;
+            var x = viewPort.findX(this.center.x);
+            var y = viewPort.findY(this.center.y);
             var radius = this.radius * viewPort.zoomFactor;
             var start = 0;
             var end = 2 * Math.PI;
@@ -115,28 +115,28 @@ var __extends = (this && this.__extends) || (function () {
         Line.prototype.draw = function () {
             if (this.eraserSegment) {
                 var lineSegment = this.eraserSegment;
-                var startX = this.start.x * viewPort.zoomFactor + viewPort.offsetX;
-                var startY = this.start.y * viewPort.zoomFactor + viewPort.offsetY;
-                var endX = lineSegment.start.x * viewPort.zoomFactor + viewPort.offsetX;
-                var endY = lineSegment.start.y * viewPort.zoomFactor + viewPort.offsetY;
+                var startX = viewPort.findX(this.start.x);
+                var startY = viewPort.findY(this.start.y);
+                var endX = viewPort.findX(lineSegment.start.x);
+                var endY = viewPort.findY(lineSegment.start.y);
                 ctx.beginPath();
                 ctx.moveTo(startX, startY);
                 ctx.lineTo(endX, endY);
                 ctx.stroke();
                 ctx.strokeStyle = 'red';
-                startX = lineSegment.start.x * viewPort.zoomFactor + viewPort.offsetX;
-                startY = lineSegment.start.y * viewPort.zoomFactor + viewPort.offsetY;
-                endX = lineSegment.end.x * viewPort.zoomFactor + viewPort.offsetX;
-                endY = lineSegment.end.y * viewPort.zoomFactor + viewPort.offsetY;
+                startX = viewPort.findX(lineSegment.start.x);
+                startY = viewPort.findY(lineSegment.start.y);
+                endX = viewPort.findX(lineSegment.end.x);
+                endY = viewPort.findY(lineSegment.end.y);
                 ctx.beginPath();
                 ctx.moveTo(startX, startY);
                 ctx.lineTo(endX, endY);
                 ctx.stroke();
                 ctx.strokeStyle = 'black';
-                startX = lineSegment.end.x * viewPort.zoomFactor + viewPort.offsetX;
-                startY = lineSegment.end.y * viewPort.zoomFactor + viewPort.offsetY;
-                endX = this.end.x * viewPort.zoomFactor + viewPort.offsetX;
-                endY = this.end.y * viewPort.zoomFactor + viewPort.offsetY;
+                startX = viewPort.findX(lineSegment.end.x);
+                startY = viewPort.findY(lineSegment.end.y);
+                endX = viewPort.findX(this.end.x);
+                endY = viewPort.findY(this.end.y);
                 ctx.beginPath();
                 ctx.moveTo(startX, startY);
                 ctx.lineTo(endX, endY);
@@ -145,10 +145,10 @@ var __extends = (this && this.__extends) || (function () {
             }
             else {
                 ctx.strokeStyle = this.color;
-                var startX = this.start.x * viewPort.zoomFactor + viewPort.offsetX;
-                var startY = this.start.y * viewPort.zoomFactor + viewPort.offsetY;
-                var endX = this.end.x * viewPort.zoomFactor + viewPort.offsetX;
-                var endY = this.end.y * viewPort.zoomFactor + viewPort.offsetY;
+                var startX = viewPort.findX(this.start.x);
+                var startY = viewPort.findY(this.start.y);
+                var endX = viewPort.findX(this.end.x);
+                var endY = viewPort.findY(this.end.y);
                 ctx.beginPath();
                 ctx.moveTo(startX, startY);
                 ctx.lineTo(endX, endY);
@@ -269,7 +269,13 @@ var __extends = (this && this.__extends) || (function () {
         offsetX: 0,
         offsetY: 0,
         lastX: 0,
-        lastY: 0
+        lastY: 0,
+        findX: function (x) {
+            return x * this.zoomFactor + this.offsetX;
+        },
+        findY: function (y) {
+            return y * this.zoomFactor + this.offsetY;
+        }
     };
     var _loop_1 = function (radio) {
         radio.onclick = function (e) {
@@ -318,13 +324,18 @@ var __extends = (this && this.__extends) || (function () {
         }
         var xi1 = (D * dy + sgn(dy) * dx * Math.sqrt(discr)) / (dr * dr) + circle.center.x;
         var yi1 = (-D * dx + Math.abs(dy) * Math.sqrt(discr)) / (dr * dr) + circle.center.y;
+        var p1 = { x: xi1, y: yi1 };
         var xi2 = (D * dy - sgn(dy) * dx * Math.sqrt(discr)) / (dr * dr) + circle.center.x;
         var yi2 = (-D * dx - Math.abs(dy) * Math.sqrt(discr)) / (dr * dr) + circle.center.y;
-        // TODO: handle line starting inside a circle
-        if (!inBetween(line.start, line.end, { x: xi1, y: yi1 }) || !inBetween(line.start, line.end, { x: xi2, y: yi2 })) {
-            return [];
+        var p2 = { x: xi2, y: yi2 };
+        var result = [];
+        if (inBetween(line.start, line.end, p1)) {
+            result.push(p1);
         }
-        return [{ x: xi1, y: yi1 }, { x: xi2, y: yi2 }];
+        if (inBetween(line.start, line.end, p2)) {
+            result.push(p2);
+        }
+        return result;
     }
     function edges(p1, p2) {
         var a = (p1.y - p2.y) / (p1.x - p2.x);
@@ -532,8 +543,8 @@ var __extends = (this && this.__extends) || (function () {
         }
     }
     function drawPoint(point) {
-        var x = point.x * viewPort.zoomFactor + viewPort.offsetX;
-        var y = point.y * viewPort.zoomFactor + viewPort.offsetY;
+        var x = viewPort.findX(point.x);
+        var y = viewPort.findY(point.y);
         ctx.beginPath();
         ctx.arc(x, y, radius, 0, 2 * Math.PI);
         ctx.fill();
