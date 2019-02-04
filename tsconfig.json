@@ -5,6 +5,7 @@
 			"DOM"
 		],
 		"strict": true,
-		"watch": true
+		"watch": true,
+		"outDir": "out/"
 	}
 }
